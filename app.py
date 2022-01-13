@@ -806,13 +806,10 @@ async def handle_some_action2(ack, body, logger):
     logger.info(body)
 
 # Template for taking slash commands
-# @app.command("/bot-test")
-# def repeat_text(ack, respond, command):
-#     # Acknowledge command request
-#     ack()
-
-#     user_message = command['text']
-#     print(user_message)
+@slack_app.command("/bot-test")
+async def command(ack, body, respond, client, logger):
+    await ack()
+    logger.info(body)
 
 async def get_pax(pax):
     p = ""
