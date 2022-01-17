@@ -9,6 +9,7 @@ import json
 import pandas as pd
 import mysql.connector
 from mysql.connector.optionfiles import MySQLOptionsParser
+import os
 
 import sendmail
 
@@ -33,6 +34,14 @@ import sendmail
 #     return opts
 
 OPTIONAL_INPUT_VALUE = "None"
+
+# Configure mysql db
+db_config = {
+    "host":"f3stlouis.cac36jsyb5ss.us-east-2.rds.amazonaws.com",
+    "user":"f3stcharles",
+    "password":config('DATABASE_READ_PASSWORD'),
+    "database":"f3stcharles"
+}
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -350,7 +359,7 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
             },
             {
                 "type": "input",
-                "block_id": "the_ao",
+                "block_id": "ao_channel_id",
                 "element": {
                     "type": "channels_select",
                     "placeholder": {
@@ -358,7 +367,7 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
                         "text": "Select the AO",
                         "emoji": True
                     },
-                    "action_id": "channels_select-action"
+                    "action_id": "ao_channel_id"
                 },
                 "label": {
                     "type": "plain_text",
@@ -421,7 +430,30 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
 async def handle_submit_add_ao_button(ack, body, client, logger):
     await ack()
     logger.info(body)
-    logger.info(f'RESULTS: {body}')
+
+    input_data = body['view']['state']['values']
+    ao_channel_id = input_data['ao_channel_id']['ao_channel_id']['selected_channel']
+    ao_display_name = input_data['ao_display_name']['ao_display_name']
+    ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']
+
+    # Generate SQL Insert (possible to use pandas to_sql?)
+    sql_insert = f"""
+INSERT INTO schedule_aos (ao_channel_id, ao_display_name, ao_location_subtitle)
+VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}")
+    """
+    logger.info(f"SQL Statement: {sql_insert}")
+
+    try:
+        with mysql.connector.connect(**db_config) as mydb:
+            mycursor = mydb.cursor()
+            mycursor.execute(sql_insert)
+            mycursor.execute("COMMIT;")
+    except Exception as e:
+            logger.error(f"Error writing to db: {e}")
+            print(e)
+
+    
+
 
     # ao_display_name = result["ao_display_name"]["ao_display_name"]["value"]
     # channel_id = result["channels_select"]["channels_select-action"]["selected_date"]
