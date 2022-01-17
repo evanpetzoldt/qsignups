@@ -115,13 +115,46 @@ async def get_user_names(array_of_user_ids, logger, client):
     logger.info('names are {}'.format(names))
     return names
 
-# triggered when user selects home screen
-@slack_app.event("app_home_opened")
-async def update_home_tab(client, event, logger):
-    logger.info(event)
-    user_id = event["user"]
-    # refresh_home_tab(client, user_id, logger)
-        # Try to pubish view to 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+async def refresh_home_tab(client, user_id, logger):
+    # list of AOs for dropdown (eventually this will be dynamic)
+    ao_list = [
+        'ao-braveheart',
+        'ao-bums-hollow',
+        'ao-eagles-nest',
+        'ao-field-of-dreams',
+        'ao-running-with-animals',
+        'ao-the-citadel',
+        'ao-the-last-stop'
+    ]
+
+    options = []
+    for option in ao_list:
+        new_option = {
+            "text": {
+                "type": "plain_text",
+                "text": option
+            },
+            "value": option
+        }
+        options.append(new_option)
+    
+    # Try to pubish view to 
     try:
         await client.views_publish(
             user_id=user_id,
@@ -134,7 +167,16 @@ async def update_home_tab(client, event, logger):
                         "block_id": "section678",
                         "text": {
                             "type": "mrkdwn",
-                            "text": "Hello, World!"
+                            "text": "Please select an AO"
+                        },
+                        "accessory": {
+                            "action_id": "ao-select",
+                            "type": "static_select",
+                            "placeholder": {
+                                "type": "plain_text",
+                                "text": "Select an item"
+                        },
+                        "options": options
                         }
                     }
                 ]
@@ -143,6 +185,172 @@ async def update_home_tab(client, event, logger):
     except Exception as e:
         logger.error(f"Error publishing home tab: {e}")
         print(e)
+
+
+
+# triggered when user selects home screen
+@slack_app.event("app_home_opened")
+async def update_home_tab(client, event, logger):
+    logger.info(event)
+    user_id = event["user"]
+    # refresh_home_tab(client, user_id, logger)
+        # Try to pubish view to 
+
+    blocks = [
+        {
+            "type": "section",
+            "block_id": "section678",
+            "text": {
+                "type": "mrkdwn",
+                "text": "Welcome to QSignups!"
+            }
+        }
+    ]
+
+    button1 = {
+        "type":"actions",
+        "elements":[
+            {
+                "type":"button",
+                "text":{
+                    "type":"plain_text",
+                    "text":"Take a Q Slot",
+                    "emoji":True
+                },
+                "action_id":"schedule_q_button",
+                "style":"primary"
+            }
+        ]
+    }
+
+    button2 = {
+        "type":"actions",
+        "elements":[
+            {
+                "type":"button",
+                "text":{
+                    "type":"plain_text",
+                    "text":"Take a Q Slot",
+                    "emoji":True
+                },
+                "action_id":"manage_schedule_button"
+            }
+        ]
+    }
+
+    blocks.append(button1)
+    blocks.append(button2)
+
+    try:
+        await client.views_publish(
+            user_id=user_id,
+            token=config('SLACK_BOT_TOKEN'),
+            view={
+                "type": "home",
+                "blocks": blocks
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error publishing home tab: {e}")
+        print(e)
+
+
+# triggers when user chooses to schedule a q
+@slack_app.action("schedule_q_button")
+async def handle_take_q_button(ack, body, client, logger):
+    await ack()
+    logger.info(body)
+    user_id = body.get("user_id")
+    await refresh_home_tab(client, user_id, logger)
+
+# triggers when user chooses to manager the schedule
+@slack_app.action("schedule_q_button")
+async def handle_manager_schedule_button(ack, body, client, logger):
+    await ack()
+    logger.info(body)
+    user_id = body.get("user_id")
+    
+    blocks = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "Choose an option for managing the schedule:"
+            }
+        }
+    ]
+
+    button_list = [
+        "Add an AO",
+        "Edit an AO"
+        "Delete an AO",
+        "Add an event",
+        "Edit an event",
+        "Delete an event"
+    ]
+
+    elements = []
+    for button in button_list:
+        new_block = {
+        "type":"actions",
+        "elements":[{
+                "type":"button",
+                "text":{
+                    "type":"plain_text",
+                    "text":button,
+                    "emoji":True
+                },
+                "action_id":"manage_schedule_option_button",
+                "value":button
+            }]
+        }
+    
+    actions_block = {
+        "type":"actions",
+        "elements":elements
+    }
+    blocks.append(actions_block)
+
+    try:
+        await client.views_publish(
+            user_id=user_id,
+            token=config('SLACK_BOT_TOKEN'),
+            view={
+                "type": "home",
+                "blocks": blocks
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error publishing home tab: {e}")
+        print(e)
+
+# triggers when user selects a manage schedule option
+@slack_app.action("manage_schedule_option_button")
+async def handle_manage_schedule_option_button(ack, body, client, logger):
+    await ack()
+    logger.info(body)
+
+
+# triggered when user makes an ao selection
+@slack_app.action("ao-select")
+async def ao_select_slot(ack, client, body, logger):
+    # acknowledge action and log payload
+    await ack()
+    logger.info(body)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # @slack_app.command("/slackblast")
 @slack_app.command("/bot-test")
