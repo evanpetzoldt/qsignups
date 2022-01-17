@@ -6,6 +6,9 @@ from slack_bolt.async_app import AsyncApp
 import datetime
 from datetime import datetime, timezone, timedelta
 import json
+import pandas as pd
+import mysql.connector
+from mysql.connector.optionfiles import MySQLOptionsParser
 
 import sendmail
 
@@ -112,6 +115,34 @@ async def get_user_names(array_of_user_ids, logger, client):
     logger.info('names are {}'.format(names))
     return names
 
+# triggered when user selects home screen
+@slack_app.event("app_home_opened")
+async def update_home_tab(client, event, logger):
+    logger.info(event)
+    user_id = event["user"]
+    # refresh_home_tab(client, user_id, logger)
+        # Try to pubish view to 
+    try:
+        await client.views_publish(
+            user_id=user_id,
+            token=config('SLACK_BOT_TOKEN'),
+            view={
+                "type": "home",
+                "blocks": [
+                    {
+                        "type": "section",
+                        "block_id": "section678",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "Hello, World!"
+                        }
+                    }
+                ]
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error publishing home tab: {e}")
+        print(e)
 
 # @slack_app.command("/slackblast")
 @slack_app.command("/bot-test")
