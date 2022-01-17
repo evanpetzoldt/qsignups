@@ -230,7 +230,7 @@ async def update_home_tab(client, event, logger):
                 "type":"button",
                 "text":{
                     "type":"plain_text",
-                    "text":"Take a Q Slot",
+                    "text":"Manage Region Calendar",
                     "emoji":True
                 },
                 "action_id":"manage_schedule_button"
@@ -260,15 +260,15 @@ async def update_home_tab(client, event, logger):
 async def handle_take_q_button(ack, body, client, logger):
     await ack()
     logger.info(body)
-    user_id = body.get("user_id")
+    user_id = body["user"]["id"]
     await refresh_home_tab(client, user_id, logger)
 
 # triggers when user chooses to manager the schedule
-@slack_app.action("schedule_q_button")
+@slack_app.action("manage_schedule_button")
 async def handle_manager_schedule_button(ack, body, client, logger):
     await ack()
     logger.info(body)
-    user_id = body.get("user_id")
+    user_id = body["user"]["id"]
     
     blocks = [
         {
