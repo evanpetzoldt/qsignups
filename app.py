@@ -282,14 +282,13 @@ async def handle_manager_schedule_button(ack, body, client, logger):
 
     button_list = [
         "Add an AO",
-        "Edit an AO"
+        "Edit an AO",
         "Delete an AO",
         "Add an event",
         "Edit an event",
         "Delete an event"
     ]
 
-    elements = []
     for button in button_list:
         new_block = {
             "type":"actions",
@@ -326,6 +325,97 @@ async def handle_manager_schedule_button(ack, body, client, logger):
 async def handle_manage_schedule_option_button(ack, body, client, logger):
     await ack()
     logger.info(body)
+
+    selected_action = body['actions'][0]['value']
+
+    if selected_action == 'Add an AO':
+        logger.info('bring up modal to insert data')
+        blocks = [
+            {
+                "type": "input",
+                "block_id": "ao_display_name",
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "ao_display_name",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Weasel's Ridge"
+                    }
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "AO Title"
+                }
+            },
+            {
+                "type": "input",
+                "block_id": "the_ao",
+                "element": {
+                    "type": "channels_select",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select the AO",
+                        "emoji": True
+                    },
+                    "action_id": "channels_select-action"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "The AO",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "input",
+                "block_id": "ao_location_subtitle",
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "ao_location_subtitle",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Oompa Loompa Kingdom"
+                    }
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Location (township, park, etc.)"
+                }
+            }
+        ]
+
+        res = await client.views_open(
+            trigger_id=body["trigger_id"],
+            view={
+                "type": "modal",
+                "callback_id": "add-an-ao-id",
+                "title": {
+                    "type": "plain_text",
+                    "text": "Add an AO to the Schedule"
+                },
+                "submit": {
+                    "type": "plain_text",
+                    "text": "Submit"
+                },
+                "blocks": blocks
+            },
+        )
+        logger.info(res)
+
+@slack_app.view("add-an-ao-id")
+async def view_submission(ack, body, logger, client):
+    await ack()
+    logger.info(body)
+    result = body["view"]["state"]["values"]
+    logger.info(f'RESULTS: {result}')
+
+    # ao_display_name = result["ao_display_name"]["ao_display_name"]["value"]
+    # channel_id = result["channels_select"]["channels_select-action"]["selected_date"]
+    # ao_location_subtitle = result["ao_location_subtitle"]["ao_location_subtitle"]["selected_channel"]
+
+
+
+        # logger.info('gather and check data')
+        # logger.info('execute insert statement')
 
 
 # triggered when user makes an ao selection
