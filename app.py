@@ -291,23 +291,22 @@ async def handle_manager_schedule_button(ack, body, client, logger):
 
     elements = []
     for button in button_list:
-        new_element = {
-                "type":"button",
-                "text":{
-                    "type":"plain_text",
-                    "text":button,
-                    "emoji":True
-                },
-                "action_id":"manage_schedule_option_button",
-                "value":button
-            }
-        elements.append(new_element)
-    
-    actions_block = {
-        "type":"actions",
-        "elements":elements
-    }
-    blocks.append(actions_block)
+        new_block = {
+            "type":"actions",
+            "elements":[
+                {
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":button,
+                        "emoji":True
+                    },
+                    "action_id":"manage_schedule_option_button",
+                    "value":button
+                }
+            ]
+        }
+        blocks.append(new_block)
 
     try:
         await client.views_publish(
