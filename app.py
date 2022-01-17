@@ -291,9 +291,7 @@ async def handle_manager_schedule_button(ack, body, client, logger):
 
     elements = []
     for button in button_list:
-        new_block = {
-        "type":"actions",
-        "elements":[{
+        new_element = {
                 "type":"button",
                 "text":{
                     "type":"plain_text",
@@ -302,8 +300,8 @@ async def handle_manager_schedule_button(ack, body, client, logger):
                 },
                 "action_id":"manage_schedule_option_button",
                 "value":button
-            }]
-        }
+            }
+        elements.append(new_element)
     
     actions_block = {
         "type":"actions",
