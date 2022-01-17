@@ -327,9 +327,10 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
     logger.info(body)
 
     selected_action = body['actions'][0]['value']
+    user_id = body["user"]["id"]
 
     if selected_action == 'Add an AO':
-        logger.info('bring up modal to insert data')
+        logger.info('gather input data')
         blocks = [
             {
                 "type": "input",
@@ -383,30 +384,44 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
             }
         ]
 
-        res = await client.views_open(
-            trigger_id=body["trigger_id"],
-            view={
-                "type": "modal",
-                "callback_id": "add-an-ao-id",
-                "title": {
-                    "type": "plain_text",
-                    "text": "Add an AO to the Schedule"
-                },
-                "submit": {
-                    "type": "plain_text",
-                    "text": "Submit"
-                },
-                "blocks": blocks
-            },
-        )
-        logger.info(res)
+        action_button = {
+            "type":"actions",
+            "elements":[
+                {
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":"Submit",
+                        "emoji":True
+                    },
+                    "action_id":"submit_add_ao_button",
+                    "style":"primary",
+                    "value":"Submit"
+                }
+            ]    
+        }
+        blocks.append(action_button)
 
-@slack_app.view("add-an-ao-id")
-async def view_submission(ack, body, logger, client):
+        try:
+            await client.views_publish(
+                user_id=user_id,
+                token=config('SLACK_BOT_TOKEN'),
+                view={
+                    "type": "home",
+                    "blocks": blocks
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error publishing home tab: {e}")
+            print(e)
+
+
+
+@slack_app.action("submit_add_ao_button")
+async def handle_submit_add_ao_button(ack, body, client, logger):
     await ack()
     logger.info(body)
-    result = body["view"]["state"]["values"]
-    logger.info(f'RESULTS: {result}')
+    logger.info(f'RESULTS: {body}')
 
     # ao_display_name = result["ao_display_name"]["ao_display_name"]["value"]
     # channel_id = result["channels_select"]["channels_select-action"]["selected_date"]
