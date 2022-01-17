@@ -409,7 +409,24 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
                 }
             ]    
         }
+        cancel_button = {
+            "type":"actions",
+            "elements":[
+                {
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":"Cancel",
+                        "emoji":True
+                    },
+                    "action_id":"cancel_button_select",
+                    "style":"danger",
+                    "value":"Cancel"
+                }
+            ]    
+        }
         blocks.append(action_button)
+        blocks.append(cancel_button)
 
         try:
             await client.views_publish(
@@ -468,6 +485,13 @@ VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}")
 # triggered when user makes an ao selection
 @slack_app.action("ao-select")
 async def ao_select_slot(ack, client, body, logger):
+    # acknowledge action and log payload
+    await ack()
+    logger.info(body)
+
+# triggered when user hits cancel
+@slack_app.action("cancel_button_select")
+async def cancel_button_select(ack, client, body, logger):
     # acknowledge action and log payload
     await ack()
     logger.info(body)
