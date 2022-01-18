@@ -33,6 +33,7 @@ import sendmail
 #         opts.append(x)
 #     return opts
 
+# I think this is only used for email stuff at the moment
 OPTIONAL_INPUT_VALUE = "None"
 
 # Configure mysql db
@@ -142,15 +143,13 @@ async def get_user_names(array_of_user_ids, logger, client):
 
 async def refresh_home_tab(client, user_id, logger):
     # list of AOs for dropdown (eventually this will be dynamic)
-    ao_list = [
-        'ao-braveheart',
-        'ao-bums-hollow',
-        'ao-eagles-nest',
-        'ao-field-of-dreams',
-        'ao-running-with-animals',
-        'ao-the-citadel',
-        'ao-the-last-stop'
-    ]
+    sql_ao_list = "SELECT ao_display_name FROM schedule_AOS;"
+    try:
+        with mysql.connector.connect(**db_config) as mydb:
+            ao_list = pd.read_sql(sql_ao_list, mydb)
+            ao_list = ao_list['ao_display_name'].values.tolist()
+    except Exception as e:
+        logger.error(f"Error pulling AO list: {e}")
 
     options = []
     for option in ao_list:
@@ -291,11 +290,7 @@ async def handle_manager_schedule_button(ack, body, client, logger):
 
     button_list = [
         "Add an AO",
-        "Edit an AO",
-        "Delete an AO",
-        "Add an event",
-        "Edit an event",
-        "Delete an event"
+        "Add an event"
     ]
 
     for button in button_list:
@@ -338,6 +333,7 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
     selected_action = body['actions'][0]['value']
     user_id = body["user"]["id"]
 
+    # 'Add an AO' selected
     if selected_action == 'Add an AO':
         logger.info('gather input data')
         blocks = [
@@ -440,8 +436,132 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
         except Exception as e:
             logger.error(f"Error publishing home tab: {e}")
             print(e)
+    elif selected_action == 'Add an event':
+        logging.info('add an event')
 
+        # list of AOs for dropdown
+        sql_ao_list = "SELECT ao_display_name FROM schedule_AOS;"
+        try:
+            with mysql.connector.connect(**db_config) as mydb:
+                ao_list = pd.read_sql(sql_ao_list, mydb)
+                ao_list = ao_list['ao_display_name'].values.tolist()
+        except Exception as e:
+            logger.error(f"Error pulling AO list: {e}")
 
+        ao_options = []
+        for option in ao_list:
+            new_option = {
+                "text": {
+                    "type": "plain_text",
+                    "text": option
+                },
+                "value": option
+            }
+            ao_options.append(new_option)
+
+        day_options = [
+            'Monday',
+            'Tuesday',
+            'Wednesday',
+            'Thursday',
+            'Friday',
+            'Saturday',
+            'Sunday'
+        ]
+        blocks = [
+            {
+                "type": "section",
+                "block_id": "ao_display_name_select",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "AO: "
+                },
+                "accessory": {
+                    "action_id": "ao_display_name_select",
+                    "type": "static_select",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select an item"
+                },
+                "options": ao_options
+                }
+            },
+            {
+                "type": "section",
+                "block_id": "event_day_of_week",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "Day of the week: "
+                },
+                "accessory": {
+                    "action_id": "event_day_of_week_select",
+                    "type": "static_select",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select an item"
+                },
+                "options": day_options
+                }
+            },
+            {
+                "type": "section",
+                "block_id": "event_time",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "Beatdown start: "
+                },
+                "accessory": {
+                    "type": "timepicker",
+                    "initial_time": "05:30",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select time",
+                        "emoji": True
+                    },
+                    "action_id": "event_time_select"
+                }
+		    },
+            {
+                "type": "actions",
+                "block_id": "submit_cancel_buttons",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Submit",
+                            "emoji": True
+                        },
+                        "value": "submit",
+                        "action_id": "submit_cancel_buttons_select",
+                        "style": "primary"
+                    },
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Cancel",
+                            "emoji": True
+                        },
+                        "value": "cancel",
+                        "action_id": "submit_cancel_buttons_select",
+                        "style": "danger"
+                    }
+                ]
+            }
+        ]
+        try:
+            await client.views_publish(
+                user_id=user_id,
+                token=config('SLACK_BOT_TOKEN'),
+                view={
+                    "type": "home",
+                    "blocks": blocks
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error publishing home tab: {e}")
+            print(e)
 
 @slack_app.action("submit_add_ao_button")
 async def handle_submit_add_ao_button(ack, body, client, logger):
@@ -469,7 +589,10 @@ VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}")
             logger.error(f"Error writing to db: {e}")
             print(e)
 
-    
+@slack_app.action("submit_cancel_buttons_select")
+async def handle_submit_cancel_buttons_select(ack, body, client, logger):
+    await ack()
+    logger.info(body)  
 
 
     # ao_display_name = result["ao_display_name"]["ao_display_name"]["value"]
