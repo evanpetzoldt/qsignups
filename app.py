@@ -143,7 +143,7 @@ async def get_user_names(array_of_user_ids, logger, client):
 
 async def refresh_home_tab(client, user_id, logger):
     # list of AOs for dropdown (eventually this will be dynamic)
-    sql_ao_list = "SELECT ao_display_name FROM schedule_AOS;"
+    sql_ao_list = "SELECT ao_display_name FROM schedule_aos;"
     try:
         with mysql.connector.connect(**db_config) as mydb:
             ao_list = pd.read_sql(sql_ao_list, mydb)
@@ -440,7 +440,7 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
         logging.info('add an event')
 
         # list of AOs for dropdown
-        sql_ao_list = "SELECT ao_display_name FROM schedule_AOS;"
+        sql_ao_list = "SELECT ao_display_name FROM schedule_aos;"
         try:
             with mysql.connector.connect(**db_config) as mydb:
                 ao_list = pd.read_sql(sql_ao_list, mydb)
