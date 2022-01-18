@@ -544,7 +544,7 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
                             "emoji": True
                         },
                         "value": "submit",
-                        "action_id": "submit_cancel_buttons_select",
+                        "action_id": "submit_button_select",
                         "style": "primary"
                     },
                     {
@@ -555,7 +555,7 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
                             "emoji": True
                         },
                         "value": "cancel",
-                        "action_id": "submit_cancel_buttons_select",
+                        "action_id": "cancel_button_select",
                         "style": "danger"
                     }
                 ]
@@ -600,11 +600,10 @@ VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}")
             logger.error(f"Error writing to db: {e}")
             print(e)
 
-@slack_app.action("submit_cancel_buttons_select")
+@slack_app.action("submit_button_select")
 async def handle_submit_cancel_buttons_select(ack, body, client, logger):
     await ack()
     logger.info(body)  
-
 
     # ao_display_name = result["ao_display_name"]["ao_display_name"]["value"]
     # channel_id = result["channels_select"]["channels_select-action"]["selected_date"]
