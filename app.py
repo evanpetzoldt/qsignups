@@ -459,7 +459,7 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
             }
             ao_options.append(new_option)
 
-        day_options = [
+        day_list = [
             'Monday',
             'Tuesday',
             'Wednesday',
@@ -468,6 +468,17 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
             'Saturday',
             'Sunday'
         ]
+        day_options = []
+        for option in day_list:
+            new_option = {
+                "text": {
+                    "type": "plain_text",
+                    "text": option
+                },
+                "value": option
+            }
+            day_options.append(new_option)
+
         blocks = [
             {
                 "type": "section",
