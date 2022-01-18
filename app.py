@@ -39,7 +39,7 @@ OPTIONAL_INPUT_VALUE = "None"
 db_config = {
     "host":"f3stlouis.cac36jsyb5ss.us-east-2.rds.amazonaws.com",
     "user":"f3stcharles",
-    "password":config('DATABASE_READ_PASSWORD'),
+    "password":config('DATABASE_WRITE_PASSWORD'),
     "database":"f3stcharles"
 }
 
@@ -450,8 +450,8 @@ async def handle_submit_add_ao_button(ack, body, client, logger):
 
     input_data = body['view']['state']['values']
     ao_channel_id = input_data['ao_channel_id']['ao_channel_id']['selected_channel']
-    ao_display_name = input_data['ao_display_name']['ao_display_name']
-    ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']
+    ao_display_name = input_data['ao_display_name']['ao_display_name']['value']
+    ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']['value']
 
     # Generate SQL Insert (possible to use pandas to_sql?)
     sql_insert = f"""
