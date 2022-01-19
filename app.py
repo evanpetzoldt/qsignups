@@ -586,18 +586,20 @@ async def handle_submit_add_ao_button(ack, body, client, logger):
     await ack()
     logger.info(body)
 
+    # Gather inputs from form
     input_data = body['view']['state']['values']
     ao_channel_id = input_data['ao_channel_id']['ao_channel_id']['selected_channel']
     ao_display_name = input_data['ao_display_name']['ao_display_name']['value']
     ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']['value']
 
-    # Generate SQL Insert (possible to use pandas to_sql?)
+    # Generate SQL INSERT statement
     sql_insert = f"""
 INSERT INTO schedule_aos (ao_channel_id, ao_display_name, ao_location_subtitle)
 VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}")
     """
-    logger.info(f"SQL Statement: {sql_insert}")
 
+    # Write to AO table
+    logger.info(f"Attempting SQL INSERT: {sql_insert}")
     try:
         with mysql.connector.connect(**db_config) as mydb:
             mycursor = mydb.cursor()
@@ -608,9 +610,42 @@ VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}")
             print(e)
 
 @slack_app.action("submit_button_select")
-async def handle_submit_cancel_buttons_select(ack, body, client, logger):
+async def handle_submit_add_event(ack, body, client, logger):
     await ack()
     logger.info(body)  
+
+    # Gather inputs from form
+    input_data = body['view']['state']['values']
+    ao_display_name = input_data['ao_display_name_select']['ao_display_name_select_action']['selected_option']['value']
+    event_day_of_week = input_data['event_day_of_week_select']['event_day_of_week_select_action']['selected_option']['value']
+    event_time = input_data['event_time_select']['event_time_select']['selected_time'].replace(':','')
+    event_type = 'Beatdown'
+
+    # Grab channel id
+    try:
+        with mysql.connector.connect(**db_config) as mydb:
+            mycursor = mydb.cursor()
+            mycursor.execute(f'SELECT ao_channel_id FROM schedule_aos WHERE ao_display_name = "{ao_display_name}";')
+            ao_channel_id = mycursor.fetchone()[0]
+    except Exception as e:
+           logger.error(f"Error pulling from db: {e}")
+
+    # Generate SQL INSERT statement
+    sql_insert = f"""
+INSERT INTO schedule_aos (ao_channel_id, event_day_of_week, event_time, event_type)
+VALUES ("{ao_channel_id}", "{event_day_of_week}", "{event_time}", "{event_type})
+    """
+
+    # Write to weekly table
+    logger.info(f"Attempting SQL INSERT: {sql_insert}")
+    try:
+        with mysql.connector.connect(**db_config) as mydb:
+            mycursor = mydb.cursor()
+            mycursor.execute(sql_insert)
+            mycursor.execute("COMMIT;")
+    except Exception as e:
+           logger.error(f"Error writing to db: {e}")
+
 
     # ao_display_name = result["ao_display_name"]["ao_display_name"]["value"]
     # channel_id = result["channels_select"]["channels_select-action"]["selected_date"]
