@@ -367,7 +367,7 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
                 },
                 "label": {
                     "type": "plain_text",
-                    "text": "The AO",
+                    "text": "Slack channel",
                     "emoji": True
                 }
             },
@@ -453,7 +453,8 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
             new_option = {
                 "text": {
                     "type": "plain_text",
-                    "text": option
+                    "text": option,
+                    "emoji": True
                 },
                 "value": option
             }
@@ -473,7 +474,8 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
             new_option = {
                 "text": {
                     "type": "plain_text",
-                    "text": option
+                    "text": option,
+                    "emoji": True
                 },
                 "value": option
             }
@@ -481,47 +483,47 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
 
         blocks = [
             {
-                "type": "section",
+                "type": "input",
                 "block_id": "ao_display_name_select",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "AO: "
-                },
-                "accessory": {
-                    "action_id": "ao_display_name_select",
+                "element": {
                     "type": "static_select",
                     "placeholder": {
                         "type": "plain_text",
-                        "text": "Select an item"
+                        "text": "Select an AO",
+                        "emoji": True   
+                    },
+                    "options": ao_options,
+                    "action_id": "ao_display_name_select_action"
                 },
-                "options": ao_options
-                }
+                "label": {
+                    "type": "plain_text",
+                    "text": "AO",
+                    "emoji": True
+                }  
             },
             {
-                "type": "section",
-                "block_id": "event_day_of_week",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "Day of the week: "
-                },
-                "accessory": {
-                    "action_id": "event_day_of_week_select",
+                "type": "input",
+                "block_id": "event_day_of_week_select",
+                "element": {
                     "type": "static_select",
                     "placeholder": {
                         "type": "plain_text",
-                        "text": "Select an item"
+                        "text": "Select a day",
+                        "emoji": True   
+                    },
+                    "options": day_options,
+                    "action_id": "event_day_of_week_select_action"
                 },
-                "options": day_options
-                }
+                "label": {
+                    "type": "plain_text",
+                    "text": "Day of Week",
+                    "emoji": True
+                }  
             },
             {
-                "type": "section",
-                "block_id": "event_time",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "Beatdown start: "
-                },
-                "accessory": {
+                "type": "input",
+                "block_id": "event_time_select",
+                "element": {
                     "type": "timepicker",
                     "initial_time": "05:30",
                     "placeholder": {
@@ -530,6 +532,11 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
                         "emoji": True
                     },
                     "action_id": "event_time_select"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Beatdown Start",
+                    "emoji": True
                 }
 		    },
             {
