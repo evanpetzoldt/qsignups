@@ -226,67 +226,7 @@ async def update_home_tab(client, event, logger):
     logger.info(event)
     user_id = event["user"]
     top_message = 'Welcome to QSignups' # TODO: add display name for added friendliness!
-    refresh_home_tab(client, user_id, logger, top_message)
-        # Try to pubish view to 
-
-    blocks = [
-        {
-            "type": "section",
-            "block_id": "section678",
-            "text": {
-                "type": "mrkdwn",
-                "text": "Welcome to QSignups!"
-            }
-        }
-    ]
-
-    button1 = {
-        "type":"actions",
-        "elements":[
-            {
-                "type":"button",
-                "text":{
-                    "type":"plain_text",
-                    "text":"Take a Q Slot",
-                    "emoji":True
-                },
-                "action_id":"schedule_q_button",
-                "style":"primary"
-            }
-        ]
-    }
-
-    button2 = {
-        "type":"actions",
-        "elements":[
-            {
-                "type":"button",
-                "text":{
-                    "type":"plain_text",
-                    "text":"Manage Region Calendar",
-                    "emoji":True
-                },
-                "action_id":"manage_schedule_button"
-            }
-        ]
-    }
-
-    blocks.append(button1)
-    blocks.append(button2)
-
-    try:
-        await client.views_publish(
-            user_id=user_id,
-            token=config('SLACK_BOT_TOKEN'),
-            view={
-                "type": "home",
-                "blocks": blocks
-            }
-        )
-    except Exception as e:
-        logger.error(f"Error publishing home tab: {e}")
-        print(e)
-
+    await refresh_home_tab(client, user_id, logger, top_message)
 
 # triggers when user chooses to schedule a q
 @slack_app.action("schedule_q_button")
@@ -642,7 +582,7 @@ VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}")
     else:
         top_message = "There was a problem adding your AO; please try again or contact your administrator / weasel shaker."
     
-    refresh_home_tab(client, user_id, logger, top_message)
+    await refresh_home_tab(client, user_id, logger, top_message)
 
 @slack_app.action("submit_add_event_button")
 async def handle_submit_add_event_button(ack, body, client, logger):
@@ -669,7 +609,7 @@ async def handle_submit_add_event_button(ack, body, client, logger):
 
     # Generate SQL INSERT statement
     sql_insert = f"""
-INSERT INTO schedule_aos (ao_channel_id, event_day_of_week, event_time, event_type)
+INSERT INTO schedule_weekly (ao_channel_id, event_day_of_week, event_time, event_type)
 VALUES ("{ao_channel_id}", "{event_day_of_week}", "{event_time}", "{event_type}");
     """
 
@@ -709,7 +649,7 @@ VALUES ("{ao_channel_id}", "{event_day_of_week}", "{event_time}", "{event_type}"
         top_message = f"Thanks, I got it! I've added {round(schedule_create_length_days/365)} year's worth of {event_type}s to the schedule for {event_day_of_week}s at {event_time} at {ao_display_name}."
     else:
         top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / weasel shaker."
-    refresh_home_tab(client, user_id, logger, top_message)
+    await refresh_home_tab(client, user_id, logger, top_message)
 
 
 # triggered when user makes an ao selection
@@ -727,7 +667,7 @@ async def cancel_button_select(ack, client, body, logger):
     logger.info(body)
     user_id = body['user']['id']
     top_message = "Welcome to QSignups!"
-    refresh_home_tab(client, user_id, logger, top_message)
+    await refresh_home_tab(client, user_id, logger, top_message)
 
 
 
