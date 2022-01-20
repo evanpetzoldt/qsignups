@@ -41,9 +41,9 @@ schedule_create_length_days = 365
 # Configure mysql db
 db_config = {
     "host":"f3stlouis.cac36jsyb5ss.us-east-2.rds.amazonaws.com",
-    "user":"f3stcharles",
+    "user":"f3stcharles", # TODO: this should be an environment variable
     "password":config('DATABASE_WRITE_PASSWORD'),
-    "database":"f3stcharles"
+    "database":"f3stcharles" # TODO: this should be an environment variable
 }
 
 
@@ -628,6 +628,7 @@ VALUES ("{ao_channel_id}", "{event_day_of_week}", "{event_time}", "{event_type}"
     success_status = False
     try:
         with mysql.connector.connect(**db_config) as mydb:
+            mycursor = mydb.cursor()
             iterate_date = date.today()
             while iterate_date < (date.today() + timedelta(days=schedule_create_length_days)):
                 if iterate_date.strftime('%A') == event_day_of_week:
