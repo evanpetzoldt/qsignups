@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from slack_bolt.adapter.fastapi.async_handler import AsyncSlackRequestHandler
 from slack_bolt.async_app import AsyncApp
 import datetime
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 import json
 import pandas as pd
 import mysql.connector
@@ -35,6 +35,8 @@ import sendmail
 
 # I think this is only used for email stuff at the moment
 OPTIONAL_INPUT_VALUE = "None"
+
+schedule_create_length_days = 365
 
 # Configure mysql db
 db_config = {
@@ -141,7 +143,7 @@ async def get_user_names(array_of_user_ids, logger, client):
 
 
 
-async def refresh_home_tab(client, user_id, logger):
+async def refresh_home_tab(client, user_id, logger, top_message):
     # list of AOs for dropdown (eventually this will be dynamic)
     sql_ao_list = "SELECT ao_display_name FROM schedule_aos;"
     try:
@@ -175,7 +177,15 @@ async def refresh_home_tab(client, user_id, logger):
                         "block_id": "section678",
                         "text": {
                             "type": "mrkdwn",
-                            "text": "Please select an AO"
+                            "text": top_message
+                        }
+                    },
+                    {
+                        "type": "section",
+                        "block_id": "ao_select_block",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "Please select an AO to take a Q slot:"
                         },
                         "accessory": {
                             "action_id": "ao-select",
@@ -186,6 +196,20 @@ async def refresh_home_tab(client, user_id, logger):
                         },
                         "options": options
                         }
+                    },
+                    {
+                        "type":"actions",
+                        "elements":[
+                            {
+                                "type":"button",
+                                "text":{
+                                    "type":"plain_text",
+                                    "text":"Manage Region Calendar",
+                                    "emoji":True
+                                },
+                                "action_id":"manage_schedule_button"
+                            }
+                        ]
                     }
                 ]
             }
@@ -201,7 +225,8 @@ async def refresh_home_tab(client, user_id, logger):
 async def update_home_tab(client, event, logger):
     logger.info(event)
     user_id = event["user"]
-    # refresh_home_tab(client, user_id, logger)
+    top_message = 'Welcome to QSignups' # TODO: add display name for added friendliness!
+    refresh_home_tab(client, user_id, logger, top_message)
         # Try to pubish view to 
 
     blocks = [
@@ -551,7 +576,7 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
                             "emoji": True
                         },
                         "value": "submit",
-                        "action_id": "submit_button_select",
+                        "action_id": "submit_add_event_button",
                         "style": "primary"
                     },
                     {
@@ -585,6 +610,7 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
 async def handle_submit_add_ao_button(ack, body, client, logger):
     await ack()
     logger.info(body)
+    user_id = body['user']['id']
 
     # Gather inputs from form
     input_data = body['view']['state']['values']
@@ -600,26 +626,37 @@ VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}")
 
     # Write to AO table
     logger.info(f"Attempting SQL INSERT: {sql_insert}")
+    success_status = False
     try:
         with mysql.connector.connect(**db_config) as mydb:
             mycursor = mydb.cursor()
             mycursor.execute(sql_insert)
             mycursor.execute("COMMIT;")
+            success_status = True
     except Exception as e:
             logger.error(f"Error writing to db: {e}")
-            print(e)
 
-@slack_app.action("submit_button_select")
-async def handle_submit_add_event(ack, body, client, logger):
+    # Take the user back home
+    if success_status:
+        top_message = f"Success! Added {ao_display_name} to the list of AOs on the schedule"
+    else:
+        top_message = "There was a problem adding your AO; please try again or contact your administrator / weasel shaker."
+    
+    refresh_home_tab(client, user_id, logger, top_message)
+
+@slack_app.action("submit_add_event_button")
+async def handle_submit_add_event_button(ack, body, client, logger):
     await ack()
     logger.info(body)  
+    user_id = body['user']['id']
 
     # Gather inputs from form
     input_data = body['view']['state']['values']
     ao_display_name = input_data['ao_display_name_select']['ao_display_name_select_action']['selected_option']['value']
     event_day_of_week = input_data['event_day_of_week_select']['event_day_of_week_select_action']['selected_option']['value']
     event_time = input_data['event_time_select']['event_time_select']['selected_time'].replace(':','')
-    event_type = 'Beatdown'
+    event_type = 'Beatdown' # eventually this will be dynamic
+    event_recurring = True # this would be false for one-time events
 
     # Grab channel id
     try:
@@ -633,7 +670,7 @@ async def handle_submit_add_event(ack, body, client, logger):
     # Generate SQL INSERT statement
     sql_insert = f"""
 INSERT INTO schedule_aos (ao_channel_id, event_day_of_week, event_time, event_type)
-VALUES ("{ao_channel_id}", "{event_day_of_week}", "{event_time}", "{event_type})
+VALUES ("{ao_channel_id}", "{event_day_of_week}", "{event_time}", "{event_type}");
     """
 
     # Write to weekly table
@@ -646,15 +683,33 @@ VALUES ("{ao_channel_id}", "{event_day_of_week}", "{event_time}", "{event_type})
     except Exception as e:
            logger.error(f"Error writing to db: {e}")
 
+    # Write to master schedule table
+    logger.info(f"Attempting SQL INSERT into schedule_master")
+    success_status = False
+    try:
+        with mysql.connector.connect(**db_config) as mydb:
+            iterate_date = date.today()
+            while iterate_date < (date.today() + timedelta(days=schedule_create_length_days)):
+                if iterate_date.strftime('%A') == event_day_of_week:
+                    sql_insert = f"""
+            INSERT INTO schedule_master (ao_channel_id, event_date, event_time, event_day_of_week, event_type, event_recurring)
+            VALUES ("{ao_channel_id}", DATE("{iterate_date}"), "{event_time}", "{event_day_of_week}", "{event_type}", {event_recurring})    
+                    """
+                    mycursor.execute(sql_insert)
+                    # print(sql_insert)
+                iterate_date += timedelta(days=1)
 
-    # ao_display_name = result["ao_display_name"]["ao_display_name"]["value"]
-    # channel_id = result["channels_select"]["channels_select-action"]["selected_date"]
-    # ao_location_subtitle = result["ao_location_subtitle"]["ao_location_subtitle"]["selected_channel"]
+            mycursor.execute("COMMIT;")
+            success_status = True
+    except Exception as e:
+           logger.error(f"Error writing to schedule_master: {e}")
 
-
-
-        # logger.info('gather and check data')
-        # logger.info('execute insert statement')
+    # Give status message and return to home
+    if success_status:
+        top_message = f"Thanks, I got it! I've added {round(schedule_create_length_days/365)} year's worth of {event_type}s to the schedule for {event_day_of_week}s at {event_time} at {ao_display_name}."
+    else:
+        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / weasel shaker."
+    refresh_home_tab(client, user_id, logger, top_message)
 
 
 # triggered when user makes an ao selection
@@ -670,6 +725,9 @@ async def cancel_button_select(ack, client, body, logger):
     # acknowledge action and log payload
     await ack()
     logger.info(body)
+    user_id = body['user']['id']
+    top_message = "Welcome to QSignups!"
+    refresh_home_tab(client, user_id, logger, top_message)
 
 
 
