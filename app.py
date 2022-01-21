@@ -200,7 +200,10 @@ async def refresh_home_tab(client, user_id, logger, top_message):
     ]
 
     # Optionally add admin button
-    if await client.users_info(user=user_id)['user']['is_admin']:
+    user_info_dict = await client.users_info(
+        user=user_id
+    )
+    if user_info_dict['user']['is_admin']:
         admin_button = {
             "type":"actions",
             "elements":[
