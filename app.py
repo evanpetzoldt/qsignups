@@ -1,5 +1,5 @@
 import logging
-from sre_constants import SUCCESS
+# from sre_constants import SUCCESS
 from decouple import config, UndefinedValueError
 from fastapi import FastAPI, Request
 from slack_bolt.adapter.fastapi.async_handler import AsyncSlackRequestHandler
@@ -574,8 +574,8 @@ async def handle_submit_add_ao_button(ack, body, client, logger):
 
     # Generate SQL INSERT statement
     sql_insert = f"""
-INSERT INTO schedule_aos (ao_channel_id, ao_display_name, ao_location_subtitle)
-VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}")
+    INSERT INTO schedule_aos (ao_channel_id, ao_display_name, ao_location_subtitle)
+    VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}")
     """
 
     # Write to AO table
