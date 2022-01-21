@@ -241,7 +241,7 @@ async def refresh_home_tab(client, user_id, logger, top_message):
 async def update_home_tab(client, event, logger):
     logger.info(event)
     user_id = event["user"]
-    user_name = await get_user_names([user_id], logger, client)
+    user_name = await get_user_names([user_id], logger, client)[0]
     top_message = f'Welcome to QSignups, {user_name}!' 
     await refresh_home_tab(client, user_id, logger, top_message)
 
@@ -717,9 +717,10 @@ async def ao_select_slot(ack, client, body, logger):
 
     # Show next x number of events
     # TODO: future add: make a "show more" button?
+    results_df['event_date_time'] = pd.to_datetime(results_df['event_date'].dt.strftime('%Y-%m-%d') + ' ' + results_df['event_time'], infer_datetime_format=True)
     for index, row in results_df.iterrows():
         # Pretty format date
-        date_fmt = row['date_time'].strftime("%A, %B %-d @ %H%M")
+        date_fmt = row['event_date_time'].strftime("%A, %B %-d @ %H%M")
         
         # If slot is empty, show green button with primary (green) style button
         if row['q_pax_id'] is None:
@@ -745,7 +746,7 @@ async def ao_select_slot(ack, client, body, logger):
                         "emoji":True
                     },
                     "action_id":action_id,
-                    "value":str(row['date_time'])
+                    "value":str(row['event_date_time'])
                 }
             ]
         }
@@ -795,7 +796,7 @@ async def handle_date_select_button(ack, client, body, logger):
     await ack()
     logger.info(body)
     user_id = body['user']['id']
-    user_name = await get_user_names([user_id], logger, client)
+    user_name = await get_user_names([user_id], logger, client)[0]
 
     # gather and format selected date and time
     selected_date = body['actions'][0]['value']
@@ -861,7 +862,7 @@ async def cancel_button_select(ack, client, body, logger):
     await ack()
     logger.info(body)
     user_id = body['user']['id']
-    user_name = await get_user_names([user_id], logger, client)
+    user_name = await get_user_names([user_id], logger, client)[0]
     top_message = f"Welcome to QSignups, {user_name}!"
     await refresh_home_tab(client, user_id, logger, top_message)
 
