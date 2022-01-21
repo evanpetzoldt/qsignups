@@ -241,7 +241,7 @@ async def refresh_home_tab(client, user_id, logger, top_message):
 async def update_home_tab(client, event, logger):
     logger.info(event)
     user_id = event["user"]
-    user_name = await get_user_names([user_id], logger, client)[0]
+    user_name = (await get_user_names([user_id], logger, client))[0]
     top_message = f'Welcome to QSignups, {user_name}!' 
     await refresh_home_tab(client, user_id, logger, top_message)
 
@@ -796,7 +796,7 @@ async def handle_date_select_button(ack, client, body, logger):
     await ack()
     logger.info(body)
     user_id = body['user']['id']
-    user_name = await get_user_names([user_id], logger, client)[0]
+    user_name = (await get_user_names([user_id], logger, client))[0]
 
     # gather and format selected date and time
     selected_date = body['actions'][0]['value']
@@ -862,7 +862,7 @@ async def cancel_button_select(ack, client, body, logger):
     await ack()
     logger.info(body)
     user_id = body['user']['id']
-    user_name = await get_user_names([user_id], logger, client)[0]
+    user_name = (await get_user_names([user_id], logger, client))[0]
     top_message = f"Welcome to QSignups, {user_name}!"
     await refresh_home_tab(client, user_id, logger, top_message)
 
