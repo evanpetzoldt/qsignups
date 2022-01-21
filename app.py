@@ -1,4 +1,5 @@
 import logging
+from sre_constants import SUCCESS
 from decouple import config, UndefinedValueError
 from fastapi import FastAPI, Request
 from slack_bolt.adapter.fastapi.async_handler import AsyncSlackRequestHandler
@@ -37,6 +38,7 @@ import sendmail
 OPTIONAL_INPUT_VALUE = "None"
 
 schedule_create_length_days = 365
+results_load = 20
 
 # Configure mysql db
 db_config = {
@@ -143,75 +145,86 @@ async def get_user_names(array_of_user_ids, logger, client):
 
 
 
+
 async def refresh_home_tab(client, user_id, logger, top_message):
     # list of AOs for dropdown (eventually this will be dynamic)
-    sql_ao_list = "SELECT ao_display_name FROM schedule_aos;"
+    sql_ao_list = "SELECT * FROM schedule_aos;"
     try:
         with mysql.connector.connect(**db_config) as mydb:
             ao_list = pd.read_sql(sql_ao_list, mydb)
-            ao_list = ao_list['ao_display_name'].values.tolist()
     except Exception as e:
         logger.error(f"Error pulling AO list: {e}")
 
+    # Build AO options list
     options = []
-    for option in ao_list:
+    for index, row in ao_list.iterrows():
         new_option = {
             "text": {
                 "type": "plain_text",
-                "text": option
+                "text": row['ao_display_name']
             },
-            "value": option
+            "value": row['ao_channel_id']
         }
         options.append(new_option)
     
-    # Try to pubish view to 
+    # Build view blocks
+    blocks = [
+        {
+            "type": "section",
+            "block_id": "section678",
+            "text": {
+                "type": "mrkdwn",
+                "text": top_message
+            }
+        },
+        {
+            "type": "divider"
+        },
+        {
+            "type": "section",
+            "block_id": "ao_select_block",
+            "text": {
+                "type": "mrkdwn",
+                "text": "Please select an AO to take a Q slot:"
+            },
+            "accessory": {
+                "action_id": "ao-select",
+                "type": "static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select an AO"
+            },
+            "options": options
+            }
+        }
+    ]
+
+    # Optionally add admin button
+    if await client.users_info(user=user_id)['user']['is_admin']:
+        admin_button = {
+            "type":"actions",
+            "elements":[
+                {
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":"Manage Region Calendar",
+                        "emoji":True
+                    },
+                    "action_id":"manage_schedule_button"
+                }
+            ]
+        }
+        blocks.append(admin_button)
+
+    # Attempt to publish view
     try:
         await client.views_publish(
             user_id=user_id,
             token=config('SLACK_BOT_TOKEN'),
             view={
                 "type": "home",
-                "blocks": [
-                    {
-                        "type": "section",
-                        "block_id": "section678",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": top_message
-                        }
-                    },
-                    {
-                        "type": "section",
-                        "block_id": "ao_select_block",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "Please select an AO to take a Q slot:"
-                        },
-                        "accessory": {
-                            "action_id": "ao-select",
-                            "type": "static_select",
-                            "placeholder": {
-                                "type": "plain_text",
-                                "text": "Select an item"
-                        },
-                        "options": options
-                        }
-                    },
-                    {
-                        "type":"actions",
-                        "elements":[
-                            {
-                                "type":"button",
-                                "text":{
-                                    "type":"plain_text",
-                                    "text":"Manage Region Calendar",
-                                    "emoji":True
-                                },
-                                "action_id":"manage_schedule_button"
-                            }
-                        ]
-                    }
-                ]
+                "blocks":blocks
             }
         )
     except Exception as e:
@@ -225,7 +238,8 @@ async def refresh_home_tab(client, user_id, logger, top_message):
 async def update_home_tab(client, event, logger):
     logger.info(event)
     user_id = event["user"]
-    top_message = 'Welcome to QSignups' # TODO: add display name for added friendliness!
+    user_name = await get_user_names([user_id], logger, client)
+    top_message = f'Welcome to QSignups, {user_name}!' 
     await refresh_home_tab(client, user_id, logger, top_message)
 
 # triggers when user chooses to schedule a q
@@ -574,13 +588,14 @@ VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}")
             mycursor.execute("COMMIT;")
             success_status = True
     except Exception as e:
-            logger.error(f"Error writing to db: {e}")
+        logger.error(f"Error writing to db: {e}")
+        error_msg = e
 
     # Take the user back home
     if success_status:
         top_message = f"Success! Added {ao_display_name} to the list of AOs on the schedule"
     else:
-        top_message = "There was a problem adding your AO; please try again or contact your administrator / weasel shaker."
+        top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
     
     await refresh_home_tab(client, user_id, logger, top_message)
 
@@ -644,12 +659,13 @@ VALUES ("{ao_channel_id}", "{event_day_of_week}", "{event_time}", "{event_type}"
             success_status = True
     except Exception as e:
            logger.error(f"Error writing to schedule_master: {e}")
+           error_msg = e
 
     # Give status message and return to home
     if success_status:
         top_message = f"Thanks, I got it! I've added {round(schedule_create_length_days/365)} year's worth of {event_type}s to the schedule for {event_day_of_week}s at {event_time} at {ao_display_name}."
     else:
-        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / weasel shaker."
+        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
     await refresh_home_tab(client, user_id, logger, top_message)
 
 
@@ -659,6 +675,181 @@ async def ao_select_slot(ack, client, body, logger):
     # acknowledge action and log payload
     await ack()
     logger.info(body)
+    
+    user_id = body['user']['id']
+    ao_display_name = body['actions'][0]['selected_option']['text']['text']
+    ao_channel_id = body['actions'][0]['selected_option']['value']
+
+    # Generate SQL pull
+    # TODO: make this specific to event type
+    sql_pull = f"""
+    SELECT *
+    FROM schedule_master
+    WHERE ao_channel_id = '{ao_channel_id}'
+        AND event_date > DATE('{date.today()}')
+    LIMIT {results_load};
+    """
+
+    # Pull upcoming schedule from db
+    logging.info(f'Pulling from db, attempting SQL: {sql_pull}')
+    try:
+        with mysql.connector.connect(**db_config) as mydb:
+            results_df = pd.read_sql_query(sql_pull, mydb)
+    except Exception as e:
+        logger.error(f"Error pulling from schedule_master: {e}")
+
+    # Construct view
+    # Top of view
+    blocks = [{
+        "type": "section",
+        "text": {"type": "mrkdwn", "text": "Please select an open Q slot for:"}
+    },
+    {
+        "type": "section",
+        "text": {"type": "mrkdwn", "text": f"*{ao_display_name}*"}
+    },
+    {
+        "type": "divider"
+    }]
+
+    # Show next x number of events
+    # TODO: future add: make a "show more" button?
+    for index, row in results_df.iterrows():
+        # Pretty format date
+        date_fmt = row['date_time'].strftime("%A, %B %-d @ %H%M")
+        
+        # If slot is empty, show green button with primary (green) style button
+        if row['q_pax_id'] is None:
+            date_status = "OPEN!"
+            date_style = "primary"
+            action_id = "date_select_button"
+        # Otherwise default (grey) button, listing Qs name
+        else:
+            date_status = row['q_pax_name']
+            date_style = "default"
+            action_id = "date_select_button_ignore" # this button action is ignored for now
+        
+        # TODO: add functionality to take self off schedule by clicking your already taken slot?
+        # Button template
+        new_button = {
+            "type":"actions",
+            "elements":[
+                {
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":f"{date_fmt}: {date_status}",
+                        "emoji":True
+                    },
+                    "action_id":action_id,
+                    "value":str(row['date_time'])
+                }
+            ]
+        }
+        if date_style == "primary":
+            new_button['elements'][0]["style"] = "primary"
+        
+        # Append button to list
+        blocks.append(new_button)
+    
+    # Cancel button
+    new_button = {
+        "type":"actions",
+        "elements":[
+            {
+                "type":"button",
+                "text":{
+                    "type":"plain_text",
+                    "text":"Cancel",
+                    "emoji":True
+                },
+                "action_id":"cancel_button_select",
+                "value":"cancel",
+                "style":"danger"
+            }
+        ]
+    }
+    blocks.append(new_button)
+    
+    # Publish view
+    try:
+        await client.views_publish(
+            user_id=user_id,
+            token=config('SLACK_BOT_TOKEN'),
+            view={
+                "type": "home",
+                "blocks": blocks
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error publishing home tab: {e}")
+        print(e)
+
+# triggered when user selects open slot
+@slack_app.action("date_select_button")
+async def handle_date_select_button(ack, client, body, logger):
+    # acknowledge action and log payload
+    await ack()
+    logger.info(body)
+    user_id = body['user']['id']
+    user_name = await get_user_names([user_id], logger, client)
+
+    # gather and format selected date and time
+    selected_date = body['actions'][0]['value']
+    selected_date_dt = datetime.strptime(selected_date, '%Y-%m-%d %H:%M:%S')
+    selected_date_db = datetime.date(selected_date_dt).strftime('%Y-%m-%d')
+    selected_time_db = datetime.time(selected_date_dt).strftime('%H%M')
+    
+    # gather info needed for message and SQL
+    ao_display_name = body['view']['blocks'][1]['text']['text'].replace('*','')
+    sql_channel_pull = f'SELECT ao_channel_id FROM schedule_aos WHERE ao_display_name = "{ao_display_name}";'
+    
+    try:
+        with mysql.connector.connect(**db_config) as mydb:
+            ao_channel_id = pd.read_sql_query(sql_channel_pull, mydb).iloc[0,0]
+    except Exception as e:
+        logger.error(f"Error pulling channel id: {e}")
+
+    # Generate SQL Statement
+    sql_update = \
+    f"""
+    UPDATE schedule_master 
+    SET q_pax_id = '{user_id}'
+        , q_pax_name = '{user_name}'
+    WHERE ao_channel_id = '{ao_channel_id}'
+        AND event_date = DATE('{selected_date_db}')
+        AND event_time = '{selected_time_db}'
+    ;
+    """
+    
+    # Attempt db update
+    logging.info(f'Attempting SQL UPDATE: {sql_update}')
+    success_status = False
+    try:
+        with mysql.connector.connect(**db_config) as mydb:
+            mycursor = mydb.cursor()
+            mycursor.execute(sql_update)
+            mycursor.execute("COMMIT;")
+            success_status = True
+    except Exception as e:
+        logger.error(f"Error updating schedule: {e}")
+        error_msg = e
+
+    # Generate top message and go back home
+    if success_status:
+        top_message = f"Got it, {user_name}! I have you down for the Q at *{ao_display_name}* on *{selected_date_dt.strftime('%A, %B %-d @ %H%M')}*"
+    else:
+        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
+    
+    await refresh_home_tab(client, user_id, logger, top_message)
+
+# triggered when user selects an already-taken slot
+@slack_app.action("date_select_button_ignore")
+async def handle_date_select_button_ignore(ack, client, body, logger):
+    # acknowledge action and log payload
+    await ack()
+    logger.info(body)
+
 
 # triggered when user hits cancel
 @slack_app.action("cancel_button_select")
@@ -667,7 +858,8 @@ async def cancel_button_select(ack, client, body, logger):
     await ack()
     logger.info(body)
     user_id = body['user']['id']
-    top_message = "Welcome to QSignups!"
+    user_name = await get_user_names([user_id], logger, client)
+    top_message = f"Welcome to QSignups, {user_name}!"
     await refresh_home_tab(client, user_id, logger, top_message)
 
 
