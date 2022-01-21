@@ -697,7 +697,7 @@ async def ao_select_slot(ack, client, body, logger):
     logging.info(f'Pulling from db, attempting SQL: {sql_pull}')
     try:
         with mysql.connector.connect(**db_config) as mydb:
-            results_df = pd.read_sql_query(sql_pull, mydb)
+            results_df = pd.read_sql_query(sql_pull, mydb, parse_dates=['event_date'])
     except Exception as e:
         logger.error(f"Error pulling from schedule_master: {e}")
 
