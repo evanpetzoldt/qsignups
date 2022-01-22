@@ -36,7 +36,17 @@ ENV_VARIABLE2 = 'oinsegln'
 
 ## Azure App Instructions
 
-Placeholder for future instructions.
+1. Set up an account on https://portal.azure.com if you don't already have one
+  * You will probably need to use a credit card to activate the account - you should NOT have to incur any charges **as long as you use the free tier**, see below
+2. Once the account is set up, click on App Services from https://portal.azure.com then hit Create
+3. If you already have an app (such as Slackblast), you should already have a Resource Group you can use. Otherwise, create a new one
+4. Give the Instance a name. This will define the url that the app uses
+5. Publish should be set to Code, Runtime stack to `Python 3.8` (I have not tested the app on other versions of Python)
+6. Under App Service Plan **make sure to select the free F1 tier Sku/size**. This is a basic server but should be able to handle our loads.
+7. Hit Review+create to create the app. It may take the new app some time to initialize.
+8. Navigate to your app by clicking on it on the left hand side. Then go to Deployment Center on the left toolbar.
+9. [placeholder for more instructions syncing your github to the app]
+10. [placeholder for instructions on using Uptimebot to keep the app from falling asleep]
 
 ## Database Setup
 
