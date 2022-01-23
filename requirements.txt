@@ -8,3 +8,4 @@ httptools
 pandas
 mysql-connector-python
 SQLAlchemy
+dataframe_image

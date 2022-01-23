@@ -2,7 +2,15 @@
 
 Welcome to QSignups! This is a Slack App built specifically to manage the Q signups and calendar for F3 regions.
 
-## Installation Instructions (Code)
+![Alt text](/screens/qsignups-logo.png?raw=true "QSignups Logo")
+
+There are 4 major components of getting this app working in your region, with more detailed instructions below:
+1. **[Code](#code-instructions)** - primary steps are forking this repo and uploading your region's settings / secrets
+2. **[Azure](#azure-instructions)** - this sets up the App Service in Azure which will host the web app and serves the requests from Slack
+3. **[Slack](#slack-instructions)** - this step sets up the app on the Slack side, including what to listen for, proper permissions, etc.
+4. **[Database](#database-instructions)** - this app relies on some additional tables on the PAXMiner MySQL database
+
+## Code Instructions
 
 To get this working in your region, please follow these steps:
 
@@ -12,6 +20,7 @@ To get this working in your region, please follow these steps:
 ```bash
 cd path/to/repo
 python3 -m venv env 
+source env/bin/activate
 python3 -m pip install -r requirements.txt
 ```
 4. Create a `.env` file. This should have the following format:
@@ -20,6 +29,7 @@ ENV_VARIABLE1 = 'xoxb-abc'
 ENV_VARIABLE2 = 'oinsegln'
 ...
 ```
+* This `.env` file will be ignored by the git / github repo (because of `.gitignore`), so you should not get angry emails from github about exposing your secrets.
 * The environment variables that are required to make QSignups run:
 
 | Variable      | Description      |
@@ -31,10 +41,9 @@ ENV_VARIABLE2 = 'oinsegln'
 | DATABASE_USER | This is the name of the db user that has **write permissions** on the Schema above. This may also be your region name |
 | DATABASE_WRITE_PASSWORD | A write-access password associated with the DB user above. This will be provided by Beaker |
 
-5. This `.env` file will be ignored by the git / github repo (because of `.gitignore`), so you should not get angry emails from github about exposing your secrets.
-6. One this is created (and after you've set up the App Service in Azure), you can upload these variables into your app. If you're using VSCode, install and sign into the Azure App Service extension. On the App Service tree, right click 'Application Settings' and select 'Upload Local Settings...'. When prompted, select your local .env file
+5. Once this is created (and after you've set up the App Service in Azure), you can upload these variables into your app. If you're using VSCode, install and sign into the Azure App Service extension. On the App Service tree, right click 'Application Settings' and select 'Upload Local Settings...'. When prompted, select your local .env file
 
-## Azure App Instructions
+## Azure Instructions
 
 1. Set up an account on https://portal.azure.com if you don't already have one
   * You will probably need to use a credit card to activate the account - you should NOT have to incur any charges **as long as you use the free tier**, see below
@@ -46,9 +55,11 @@ ENV_VARIABLE2 = 'oinsegln'
 7. Hit Review+create to create the app. It may take the new app some time to initialize.
 8. Navigate to your app by clicking on it on the left hand side. Then go to Deployment Center on the left toolbar.
 9. [placeholder for more instructions syncing your github to the app]
-10. [placeholder for instructions on using Uptimebot to keep the app from falling asleep]
+10. Based on how I set mine up, it sort of falls asleep after a bit of inactivity. One way to keep this from happening is to use a service that pings the app every so often. I am using [uptimerobot.com](https://uptimerobot.com/) to do this with the following settings: 
 
-## Database Setup
+## Slack Instructions
+
+## Database Instructions
 
 QSignups uses the same central MySQL database as PAXMiner. You will need to request a write-access user and password from Beaker associated with your region's schema. The following empty tables will then need to be created (currently demonstrated in `db_initialize.py`):
 
