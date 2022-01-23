@@ -885,7 +885,7 @@ async def command(ack, body, respond, client, logger):
     logger.info(body)
     # placeholder for now
     try:
-        await weinke_create(db_config)
+        # await weinke_create(db_config)
         await client.files_upload(
             file='weinkes/current_week_weinke.png',
             initial_comment="This week's schedule",

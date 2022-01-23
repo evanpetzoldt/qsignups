@@ -59,6 +59,33 @@ ENV_VARIABLE2 = 'oinsegln'
 
 ## Slack Instructions
 
+The url for your deployed app needs to be placed in three locations in the slackblast app in Slack:
+
+1. Interactivity and Shortcuts
+   - Request URL
+   - Options Load URL
+2. Slash Commands
+   - Request URL
+
+**Format of the URL to be used**
+
+```
+https://<YOUR-AZURE-APP-NAME>/slack/events
+```
+
+**Scopes**
+
+```
+app_mentions:read
+channels:read
+chat:write
+chat:write.public
+commands
+im:write
+users:read
+users:read.email
+```
+
 ## Database Instructions
 
 QSignups uses the same central MySQL database as PAXMiner. You will need to request a write-access user and password from Beaker associated with your region's schema. The following empty tables will then need to be created (currently demonstrated in `db_initialize.py`):

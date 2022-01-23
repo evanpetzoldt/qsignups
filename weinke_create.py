@@ -4,6 +4,8 @@ import pandas as pd
 import mysql.connector
 from datetime import datetime, date, timedelta
 import dataframe_image as dfi
+# import matplotlib
+# import lxml
 
 # DB config
 db_config = {
@@ -109,3 +111,5 @@ async def weinke_create(db_config):
     # set style and export png
     df_styled = df2.style.set_table_styles(styles).hide_index()
     dfi.export(df_styled,f"weinkes/{output_name}.png")
+
+# weinke_create(db_config)
