@@ -12,8 +12,6 @@ import mysql.connector
 from mysql.connector.optionfiles import MySQLOptionsParser
 import os
 
-import sendmail
-
 
 # def get_categories():
 #     with open('categories.json') as c:
@@ -43,9 +41,9 @@ results_load = 20
 # Configure mysql db
 db_config = {
     "host":"f3stlouis.cac36jsyb5ss.us-east-2.rds.amazonaws.com",
-    "user":"f3stcharles", # TODO: this should be an environment variable
+    "user":config('DATABASE_USER'), 
     "password":config('DATABASE_WRITE_PASSWORD'),
-    "database":"f3stcharles" # TODO: this should be an environment variable
+    "database":config('DATABASE_SCHEMA') 
 }
 
 
