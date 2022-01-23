@@ -883,7 +883,7 @@ async def command(ack, body, respond, client, logger):
     logger.info(body)
     # placeholder for now
     try:
-        client.files_upload(
+        await client.files_upload(
             file='weinkes/current_week_weinke.png',
             initial_comment="This week's schedule",
             channels=body['channel_id']
