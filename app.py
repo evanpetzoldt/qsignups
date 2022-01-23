@@ -12,6 +12,8 @@ import mysql.connector
 from mysql.connector.optionfiles import MySQLOptionsParser
 import os
 import sqlalchemy
+import dataframe_image as dfi
+from weinke_create import weinke_create
 
 
 # def get_categories():
@@ -877,12 +879,13 @@ async def cancel_button_select(ack, client, body, logger):
 
 
 
-@slack_app.command("/bot-test")
+@slack_app.command("/post-weinke")
 async def command(ack, body, respond, client, logger):
     await ack()
     logger.info(body)
     # placeholder for now
     try:
+        await weinke_create(db_config)
         await client.files_upload(
             file='weinkes/current_week_weinke.png',
             initial_comment="This week's schedule",
