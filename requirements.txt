@@ -7,3 +7,4 @@ uvloop
 httptools
 pandas
 mysql-connector-python
+SQLAlchemy

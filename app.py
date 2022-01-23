@@ -11,6 +11,7 @@ import pandas as pd
 import mysql.connector
 from mysql.connector.optionfiles import MySQLOptionsParser
 import os
+import SQLAlchemy
 
 
 # def get_categories():
@@ -146,7 +147,8 @@ async def get_user_names(array_of_user_ids, logger, client):
 
 async def refresh_home_tab(client, user_id, logger, top_message):
     # list of AOs for dropdown (eventually this will be dynamic)
-    sql_ao_list = "SELECT * FROM schedule_aos;"
+    sql_ao_list = "SELECT * FROM schedule_aos ORDER BY ao_display_name;"
+    logger.debug(f'db config: {db_config}')
     try:
         with mysql.connector.connect(**db_config) as mydb:
             ao_list = pd.read_sql(sql_ao_list, mydb)
@@ -420,7 +422,7 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
         logging.info('add an event')
 
         # list of AOs for dropdown
-        sql_ao_list = "SELECT ao_display_name FROM schedule_aos;"
+        sql_ao_list = "SELECT ao_display_name FROM schedule_aos ORDER BY ao_display_name;"
         try:
             with mysql.connector.connect(**db_config) as mydb:
                 ao_list = pd.read_sql(sql_ao_list, mydb)
