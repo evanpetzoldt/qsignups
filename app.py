@@ -11,7 +11,7 @@ import pandas as pd
 import mysql.connector
 from mysql.connector.optionfiles import MySQLOptionsParser
 import os
-import SQLAlchemy
+import sqlalchemy
 
 
 # def get_categories():
