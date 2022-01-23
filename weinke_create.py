@@ -106,4 +106,4 @@ for week in df_list:
 
   # set style and export png
   df_styled = df2.style.set_table_styles(styles).hide_index()
-  dfi.export(df_styled,f"output/{output_name}.png")
+  dfi.export(df_styled,f"weinkes/{output_name}.png")

@@ -882,6 +882,14 @@ async def command(ack, body, respond, client, logger):
     await ack()
     logger.info(body)
     # placeholder for now
+    try:
+        client.files_upload(
+            file='weinkes/current_week_weinke.png',
+            initial_comment="This week's schedule",
+            channels=body['channel_id']
+        )
+    except Exception as e:
+        logger.error(e)
 
 
 async def get_pax(pax):
