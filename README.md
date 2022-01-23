@@ -77,9 +77,11 @@ If you find bugs, you can reach out on Slack or (even better) add the issue to m
   * Edit an AO (name change, etc.)
   * Edit an event (time change, special qualifier like VQ, etc.)
 * Ability for users to edit their own events (special qualifiers like birthday Q or VQ)
+* Support for other event types (most notably QSource)
 * Automated posting of a weekly Weinke / schedule (creation code is in `weinke_create.py`)
 * Reminder messages to users about upcoming Qs (a couple days in advance?)
 * Automated messages in AO channels when there are open Q slots at the beginning of the week
 * Posting of weekly Weinke / schedule to other mediums (email, etc.)
+* Conditional formatting of Weinke to highlight open slots, VQs, etc.
 
 Any other ideas you have would be greatly appreciated! For organization purposes, I plan to use github's Issues to track them. Feel free to add an Issue with the tag 'enhancement'.
