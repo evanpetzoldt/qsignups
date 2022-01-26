@@ -945,6 +945,20 @@ async def handle_date_select_button_ignore(ack, client, body, logger):
                 }
             ]
         }]
+
+        # Publish view
+        try:
+            await client.views_publish(
+                user_id=user_id,
+                token=config('SLACK_BOT_TOKEN'),
+                view={
+                    "type": "home",
+                    "blocks": blocks
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error publishing home tab: {e}")
+            print(e)
     # Check to see if user matches selected user id OR if they are an admin
     # If so, bring up buttons:
     #   block 1: drop down to add special qualifier (VQ, Birthday Q, F3versary, Forge, etc.)
