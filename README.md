@@ -2,7 +2,7 @@
 
 Welcome to QSignups! This is a Slack App built specifically to manage the Q signups and calendar for F3 regions.
 
-![Alt text](/screens/qsignups-logo.png?raw=true "QSignups Logo")
+<img src='https://github.com/evanpetzoldt/qsignups/blob/master/screens/qsignups-logo.png?raw=true' width=25% height=25%>
 
 There are 4 major components of getting this app working in your region, with more detailed instructions below:
 1. **[Code](#code-instructions)** - primary steps are forking this repo and uploading your region's settings / secrets

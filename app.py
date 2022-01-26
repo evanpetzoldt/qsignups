@@ -168,8 +168,8 @@ async def refresh_home_tab(client, user_id, logger, top_message):
     if len(upcoming_qs_df) > 0:
         top_message += ' You have some upcoming Qs:'
         for index, row in upcoming_qs_df.iterrows():
-            dt_fmt = row['event_date'].strftime("%A, %B %-d")
-            top_message += f"\n* {dt_fmt} @ {row['event_time']} at {row['ao_display_name']}" 
+            dt_fmt = row['event_date'].strftime("%m-%d-%Y")
+            top_message += f"\n- {dt_fmt} @ {row['event_time']} at {row['ao_display_name']}" 
     
     # list of AOs for dropdown
     sql_ao_list = "SELECT * FROM schedule_aos ORDER BY ao_display_name;"
@@ -572,6 +572,15 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
                         "style": "danger"
                     }
                 ]
+            },
+            {
+			"type": "context",
+			"elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": "Please wait after hitting Submit, and do not hit it more than once"
+                    }
+                ]
             }
         ]
         try:
@@ -751,11 +760,13 @@ async def ao_select_slot(ack, client, body, logger):
             date_status = "OPEN!"
             date_style = "primary"
             action_id = "date_select_button"
+            value = str(row['event_date_time'])
         # Otherwise default (grey) button, listing Qs name
         else:
             date_status = row['q_pax_name']
             date_style = "default"
             action_id = "date_select_button_ignore" # this button action is ignored for now
+            value = str(row['event_date_time']) + row['q_pax_name']
         
         # TODO: add functionality to take self off schedule by clicking your already taken slot?
         # Button template
@@ -770,7 +781,7 @@ async def ao_select_slot(ack, client, body, logger):
                         "emoji":True
                     },
                     "action_id":action_id,
-                    "value":str(row['event_date_time'])
+                    "value":value
                 }
             ]
         }
@@ -879,8 +890,129 @@ async def handle_date_select_button_ignore(ack, client, body, logger):
     await ack()
     logger.info(body)
 
+    # Get user id / name / admin status
+    user_id = body['user']['id']
+    user_info_dict = await client.users_info(user=user_id)
+    user_name = safeget(user_info_dict, 'user', 'profile', 'display_name') or safeget(
+            user_info_dict, 'user', 'profile', 'real_name') or None
+    user_admin = user_info_dict['user']['is_admin']
 
-# triggered when user hits cancel
+    selected_value = body['actions'][0]['value']
+    selected_list = str.split(selected_value, '|')
+    selected_date = selected_list[0]
+    selected_date_dt = datetime.strptime(selected_date, '%Y-%m-%d %H:%M:%S')
+    selected_user = selected_list[1]
+    selected_ao = body['view']['blocks'][1]['text']['text'].replace('*','')
+    
+
+    if (user_name == selected_user) or user_admin:
+        label = 'yourself' if user_name == selected_user else selected_user
+        label2 = 'myself' if user_name == selected_user else selected_user
+        blocks = [{
+            "type": "section",
+            "text": {
+                "type": "mrkdwn", 
+                "text": f"Are you sure you want to take {label} off this Q slot?"
+            }
+        },
+        {
+            "type":"actions",
+            "elements":[
+                {
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":f"Yes, take {label2} off this Q slot",
+                        "emoji":True
+                    },
+                    "value":f"{selected_date}|{selected_ao}",
+                    "action_id":"clear_slot_button",
+                    "style":"danger"
+                }
+            ]
+        }, 
+        {
+            "type":"actions",
+            "elements":[
+                {
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":"No, never mind",
+                        "emoji":True
+                    },
+                    "action_id":"cancel_button_select"
+                }
+            ]
+        }]
+    # Check to see if user matches selected user id OR if they are an admin
+    # If so, bring up buttons:
+    #   block 1: drop down to add special qualifier (VQ, Birthday Q, F3versary, Forge, etc.)
+    #   block 2: danger button to take Q off slot
+    #   block 3: cancel button that takes the user back home
+
+
+# triggered when user hits cancel or some other button that takes them home
+@slack_app.action("clear_slot_button")
+async def handle_clear_slot_button(ack, client, body, logger):
+    # acknowledge action and log payload
+    await ack()
+    logger.info(body)
+    user_id = body['user']['id']
+    user_name = (await get_user_names([user_id], logger, client))[0]
+
+    # gather and format selected date and time
+    selected_list = str.split(body['actions'][0]['value'],'|')
+    selected_date = selected_list[0]
+    selected_date_dt = datetime.strptime(selected_date, '%Y-%m-%d %H:%M:%S')
+    selected_date_db = datetime.date(selected_date_dt).strftime('%Y-%m-%d')
+    selected_time_db = datetime.time(selected_date_dt).strftime('%H%M')
+
+    # gather info needed for message and SQL
+    ao_display_name = body['view']['blocks'][1]['text']['text'].replace('*','')
+    sql_channel_pull = f'SELECT ao_channel_id FROM schedule_aos WHERE ao_display_name = "{ao_display_name}";'
+    
+    try:
+        with mysql.connector.connect(**db_config) as mydb:
+            ao_channel_id = pd.read_sql_query(sql_channel_pull, mydb).iloc[0,0]
+    except Exception as e:
+        logger.error(f"Error pulling channel id: {e}")
+
+    # Generate SQL Statement
+    sql_update = \
+    f"""
+    UPDATE schedule_master 
+    SET q_pax_id = NULL
+        , q_pax_name = NULL
+    WHERE ao_channel_id = '{ao_channel_id}'
+        AND event_date = DATE('{selected_date_db}')
+        AND event_time = '{selected_time_db}'
+    ;
+    """
+    
+    # Attempt db update
+    logging.info(f'Attempting SQL UPDATE: {sql_update}')
+    success_status = False
+    try:
+        with mysql.connector.connect(**db_config) as mydb:
+            mycursor = mydb.cursor()
+            mycursor.execute(sql_update)
+            mycursor.execute("COMMIT;")
+            success_status = True
+    except Exception as e:
+        logger.error(f"Error updating schedule: {e}")
+        error_msg = e
+
+    # Generate top message and go back home
+    if success_status:
+        top_message = f"Got it, {user_name}! I have cleared the Q slot at *{ao_display_name}* on *{selected_date_dt.strftime('%A, %B %-d @ %H%M')}*"
+        # TODO: if selected date was in weinke range (current or next week), update local weinke png
+    else:
+        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
+    
+    await refresh_home_tab(client, user_id, logger, top_message)
+
+# triggered when user hits cancel or some other button that takes them home
 @slack_app.action("cancel_button_select")
 async def cancel_button_select(ack, client, body, logger):
     # acknowledge action and log payload
