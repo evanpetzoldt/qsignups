@@ -766,7 +766,7 @@ async def ao_select_slot(ack, client, body, logger):
             date_status = row['q_pax_name']
             date_style = "default"
             action_id = "date_select_button_ignore" # this button action is ignored for now
-            value = str(row['event_date_time']) + row['q_pax_name']
+            value = str(row['event_date_time']) + '|' + row['q_pax_name']
         
         # TODO: add functionality to take self off schedule by clicking your already taken slot?
         # Button template
