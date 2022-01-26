@@ -59,7 +59,9 @@ ENV_VARIABLE2 = 'oinsegln'
 
 ## Slack Instructions
 
-The url for your deployed app needs to be placed in three locations in the slackblast app in Slack:
+Go to https://api.slack.com/start/overview#creating to read up on how to create a slack app. Click their `Create a Slack app` while signed into your F3 region's Slack.
+
+When you finish setting up and installing the slackblast app in Slack, you will get a bot token also available under the OAuth & Permissions settings. You'll also get a verification token and signing secret on the Basic Information settings. You will plug that information into your own `.env` file (see above). When you finish creating the Azure app, you will need to get the URL and add it (with `/slack/events` added to it) into three locations within the slackblast app settings:
 
 1. Interactivity and Shortcuts
    - Request URL
@@ -74,6 +76,8 @@ https://<YOUR-AZURE-APP-NAME>/slack/events
 ```
 
 **Scopes**
+
+Lastly, you will need to add several Scopes to the Bot Token Scopes on the OAuth & Permissions settings:
 
 ```
 app_mentions:read
@@ -95,6 +99,14 @@ QSignups uses the same central MySQL database as PAXMiner. You will need to requ
 * `schedule_master`: this table stores the individual events
 
 Once these tables are created, you will be able to manage them through QSignups UI. **I have made it so the "Manage Region Calendar" button only shows up for Slack admins - if you're not already, you will need to be made an admin of your region's space**
+
+## Weinke Posting
+
+![Alt text](/screens/mytable.png?raw=true "Sample Weekly Q Weinke")
+
+`weinke_create.py` is capable of automatically producing something like the table above. Unfortunately, the package that produces this relies on having a Chrome executable on the host machine, which to my knowledge isn't something we could set up on the Azure App Service. In addition, I'm not sure it's possible to set up a scheduled event in an app service. So for now, I'm planning on setting up a scheduled run on my local machine. I will post instructions on doing that for those interested.
+
+We may be able to set that up on a free Azure VM at some point in the future.
 
 ## Project Status
 
