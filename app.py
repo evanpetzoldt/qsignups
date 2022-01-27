@@ -765,8 +765,8 @@ async def ao_select_slot(ack, client, body, logger):
         else:
             date_status = row['q_pax_name']
             date_style = "default"
-            action_id = "date_select_button_ignore" # this button action is ignored for now
-            value = str(row['event_date_time']) + row['q_pax_name']
+            action_id = "taken_date_select_button" 
+            value = str(row['event_date_time']) + '|' + row['q_pax_name']
         
         # TODO: add functionality to take self off schedule by clicking your already taken slot?
         # Button template
@@ -884,8 +884,8 @@ async def handle_date_select_button(ack, client, body, logger):
     await refresh_home_tab(client, user_id, logger, top_message)
 
 # triggered when user selects an already-taken slot
-@slack_app.action("date_select_button_ignore")
-async def handle_date_select_button_ignore(ack, client, body, logger):
+@slack_app.action("taken_date_select_button")
+async def handle_taken_date_select_button(ack, client, body, logger):
     # acknowledge action and log payload
     await ack()
     logger.info(body)
