@@ -983,7 +983,7 @@ async def handle_clear_slot_button(ack, client, body, logger):
     selected_time_db = datetime.time(selected_date_dt).strftime('%H%M')
 
     # gather info needed for message and SQL
-    ao_display_name = body['view']['blocks'][1]['text']['text'].replace('*','')
+    ao_display_name = selected_list[1]
     sql_channel_pull = f'SELECT ao_channel_id FROM schedule_aos WHERE ao_display_name = "{ao_display_name}";'
     
     try:
