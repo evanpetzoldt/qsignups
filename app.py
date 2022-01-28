@@ -206,6 +206,18 @@ async def refresh_home_tab(client, user_id, logger, top_message):
         },
         {
             "type": "section",
+            "block_id": "current_weinke",
+            "accessory": {
+				"type": "image",
+				"image_url": "https://files.slack.com/files-pri/T01V47U7S20-F030FS3MCKE/current_week_weinke.png",
+				"alt_text": "This week's schedule"
+			}
+        },
+        {
+            "type": "divider"
+        },
+        {
+            "type": "section",
             "block_id": "ao_select_block",
             "text": {
                 "type": "mrkdwn",
