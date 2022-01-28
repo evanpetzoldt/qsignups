@@ -205,14 +205,15 @@ async def refresh_home_tab(client, user_id, logger, top_message):
             "type": "divider"
         },
         {
-            "type": "section",
-            "block_id": "current_weinke",
-            "accessory": {
-				"type": "image",
-				"image_url": "https://live.staticflickr.com/65535/51848596591_f959b814bc_o_d.png",
-				"alt_text": "This week's schedule"
-			}
-        },
+			"type": "image",
+			"title": {
+				"type": "plain_text",
+				"text": "This week's schedule",
+				"emoji": True
+			},
+			"image_url": "https://live.staticflickr.com/65535/51848596591_f959b814bc_o_d.png",
+			"alt_text": "This week's schedule"
+		},
         {
             "type": "divider"
         },
