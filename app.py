@@ -163,7 +163,7 @@ async def refresh_home_tab(client, user_id, logger, top_message):
     sql_ao_list = "SELECT * FROM schedule_aos ORDER BY ao_display_name;"
 
     # weinke urls
-    sql_weinkes = f"SELECT current_week_weinke, next_week_weinke FROM schedule_weinkes WHERE region_schema = {config('DATABASE_SCHEMA')};"
+    sql_weinkes = f"SELECT current_week_weinke, next_week_weinke FROM schedule_weinkes WHERE region_schema = '{config('DATABASE_SCHEMA')}';"
 
     upcoming_qs_df = pd.DataFrame()
     try:
