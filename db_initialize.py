@@ -45,10 +45,20 @@ CREATE TABLE schedule_aos (
 );
 """
 
+schedule_weinkes_create = """
+CREATE TABLE schedule_weinkes (
+	region_schema varchar(255) NOT NULL,
+	current_week_weinke varchar(255),
+	next_week_weinke varchar(255),
+	CONSTRAINT pk_schedule_weinkes PRIMARY KEY (region_schema)
+);
+"""
+
 # Execute
 with mysql.connector.connect(**db_config) as mydb:
 	mycursor = mydb.cursor()
 	mycursor.execute(schedule_master_create)
 	mycursor.execute(schedule_weekly_create)
 	mycursor.execute(schedule_aos_create)
+	mycursor.execute(schedule_weinkes_create)
 	mycursor.execute("COMMIT;")

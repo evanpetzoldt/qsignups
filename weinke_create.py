@@ -1,11 +1,15 @@
 
 from decouple import config, UndefinedValueError
+from numpy import block
 import pandas as pd
 import mysql.connector
 from datetime import datetime, date, timedelta
 import dataframe_image as dfi
 # import matplotlib
 # import lxml
+import ssl
+from slack_sdk import WebClient
+
 
 # DB config
 db_config = {
@@ -15,52 +19,63 @@ db_config = {
     "database":config('DATABASE_SCHEMA') 
 }
 
-async def weinke_create(db_config):
 
-  # Figure out current and next weeks based on current start of day
-  # I have the week start on Monday and end on Sunday - if this is run on Sunday, "current" week will start tomorrow
-  tomorrow_day_of_week = (date.today() + timedelta(days=1)).weekday()
-  current_week_start = date.today() + timedelta(days=-tomorrow_day_of_week+1)
-  current_week_end = date.today() + timedelta(days=7-tomorrow_day_of_week)
-  next_week_start = current_week_start + timedelta(weeks=1)
-  next_week_end = current_week_end + timedelta(weeks=1)
+# Figure out current and next weeks based on current start of day
+# I have the week start on Monday and end on Sunday - if this is run on Sunday, "current" week will start tomorrow
+tomorrow_day_of_week = (date.today() + timedelta(days=1)).weekday()
+current_week_start = date.today() + timedelta(days=-tomorrow_day_of_week+1)
+current_week_end = date.today() + timedelta(days=7-tomorrow_day_of_week)
+next_week_start = current_week_start + timedelta(weeks=1)
+next_week_end = current_week_end + timedelta(weeks=1)
 
-  # Generate SQL pulls
-  sql_current = f"""
-  SELECT m.*, a.ao_display_name, a.ao_location_subtitle
-  FROM schedule_master m
-  LEFT JOIN schedule_aos a
-  ON m.ao_channel_id = a.ao_channel_id
-  WHERE m.event_date >= DATE('{current_week_start}')
-    AND m.event_date <= DATE('{current_week_end}');
-  """
+# Generate SQL pulls
+sql_current = f"""
+SELECT m.*, a.ao_display_name, a.ao_location_subtitle
+FROM schedule_master m
+LEFT JOIN schedule_aos a
+ON m.ao_channel_id = a.ao_channel_id
+WHERE m.event_date >= DATE('{current_week_start}')
+  AND m.event_date <= DATE('{current_week_end}')
+ORDER BY m.ao_channel_id, m.event_date, m.event_time;
+"""
 
-  sql_next = f"""
-  SELECT m.*, a.ao_display_name, a.ao_location_subtitle
-  FROM schedule_master m
-  LEFT JOIN schedule_aos a
-  ON m.ao_channel_id = a.ao_channel_id
-  WHERE m.event_date >= DATE('{next_week_start}')
-    AND m.event_date <= DATE('{next_week_end}');
-  """
+sql_next = f"""
+SELECT m.*, a.ao_display_name, a.ao_location_subtitle
+FROM schedule_master m
+LEFT JOIN schedule_aos a
+ON m.ao_channel_id = a.ao_channel_id
+WHERE m.event_date >= DATE('{next_week_start}')
+  AND m.event_date <= DATE('{next_week_end}')
+ORDER BY m.ao_channel_id, m.event_date, m.event_time;
+"""
 
-  # Pull data
-  try:
-    with mysql.connector.connect(**db_config) as mydb:
-      df_current = pd.read_sql_query(sql_current, mydb, parse_dates=['event_date'])
-      df_next = pd.read_sql_query(sql_next, mydb, parse_dates=['event_date'])
-  except Exception as e:
-    print(f'There was a problem pull from the db: {e}')
+# Pull data
+try:
+  with mysql.connector.connect(**db_config) as mydb:
+    df_current = pd.read_sql_query(sql_current, mydb, parse_dates=['event_date'])
+    df_next = pd.read_sql_query(sql_next, mydb, parse_dates=['event_date'])
+except Exception as e:
+  print(f'There was a problem pull from the db: {e}')
 
-  df_list = [
-    [df_current, 'current_week_weinke'],
-    [df_next, 'next_week_weinke']
-  ]
+df_list = [
+  [df_current, 'current_week_weinke'],
+  [df_next, 'next_week_weinke']
+]
 
-  for week in df_list:
-    df = week[0]
-    output_name = week[1]
+# url_dict = {}
+week = df_list[0]
+for week in df_list:
+  df = week[0]
+  output_name = week[1]
 
+  # Pull up prior processed data for comparison
+  df_prior = pd.read_csv(f'weinkes/{output_name}.csv')
+  df_prior['event_time'] = df_prior['event_time'].astype(str).str.zfill(4)
+  df_compare = df.compare(df_prior)
+
+  if len(df_compare)>0:
+    df.to_csv(f'weinkes/{output_name}.csv', index=False)
+    
     # date operations
     df['event_date_fmt'] = df['event_date'].dt.strftime("%m/%d")
 
@@ -112,4 +127,33 @@ async def weinke_create(db_config):
     df_styled = df2.style.set_table_styles(styles).hide_index()
     dfi.export(df_styled,f"weinkes/{output_name}.png")
 
-# weinke_create(db_config)
+    # instantiate Slack client
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    slack_client = WebClient(
+      config('SLACK_BOT_TOKEN'), ssl=ssl_context
+    )
+
+    # post to channel (bot playground for now)
+    response = slack_client.files_upload(
+      file=f'weinkes/{output_name}.png',
+      initial_comment=output_name,
+      channels=['C02UA1QR9H7']
+    )
+
+    # gather url info
+    loc = response['file']['permalink_public']
+    secrets = str.split(str.lstrip(loc,'https://slack-files.com/'), '-')
+    url = f'https://files.slack.com/files-pri/{secrets[0]}-{secrets[1]}/{output_name}.png?pub_secret={secrets[2]}'
+    url_dict[output_name] = url
+
+    # update schedule_weinke table
+    sql_update = f"UPDATE schedule_weinke SET {output_name} = '{url}' WHERE region_schema = {config('DATABASE_SCHEMA')};"
+    try:
+      with mysql.connector.connect(**db_config).cursor() as mycursor:
+        mycursor.execute(sql_update)
+        mycursor.execute("COMMIT;")
+    except Exception as e:
+      print(f'There was a problem updating the database: {e}')
+

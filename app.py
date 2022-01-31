@@ -156,28 +156,35 @@ async def refresh_home_tab(client, user_id, logger, top_message):
     ON m.ao_channel_id = a.ao_channel_id
     WHERE m.q_pax_id = "{user_id}"
     ORDER BY m.event_date, m.event_time
-    LIMIT 5;
+    LIMIT 5; 
     """
+    
+    # list of AOs for dropdown
+    sql_ao_list = "SELECT * FROM schedule_aos ORDER BY ao_display_name;"
+
+    # weinke urls
+    sql_weinkes = f"SELECT current_week_weinke, next_week_weinke FROM schedule_weinkes WHERE region_schema = {config('DATABASE_SCHEMA')};"
+
     upcoming_qs_df = pd.DataFrame()
     try:
         with mysql.connector.connect(**db_config) as mydb:
             upcoming_qs_df = pd.read_sql(sql_upcoming_qs, mydb, parse_dates=['event_date'])
+            ao_list = pd.read_sql(sql_ao_list, mydb)
+            
+            mycursor = mydb.cursor()
+            mycursor.execute(sql_weinkes)
+            weinkes_list = mycursor.fetchone()
+            current_week_weinke_url = weinkes_list[0]
+            next_week_weinke_url = weinkes_list[1] 
     except Exception as e:
-        logger.error(f"Error pulling upcoming qs: {e}")
+        logger.error(f"Error pulling user db info: {e}")
 
+    # Extend top message with upcoming qs list
     if len(upcoming_qs_df) > 0:
         top_message += ' You have some upcoming Qs:'
         for index, row in upcoming_qs_df.iterrows():
             dt_fmt = row['event_date'].strftime("%m-%d-%Y")
             top_message += f"\n- {dt_fmt} @ {row['event_time']} at {row['ao_display_name']}" 
-    
-    # list of AOs for dropdown
-    sql_ao_list = "SELECT * FROM schedule_aos ORDER BY ao_display_name;"
-    try:
-        with mysql.connector.connect(**db_config) as mydb:
-            ao_list = pd.read_sql(sql_ao_list, mydb)
-    except Exception as e:
-        logger.error(f"Error pulling AO list: {e}")
 
     # Build AO options list
     options = []
@@ -211,8 +218,18 @@ async def refresh_home_tab(client, user_id, logger, top_message):
 				"text": "This week's schedule",
 				"emoji": True
 			},
-			"image_url": "https://live.staticflickr.com/65535/51848596591_f959b814bc_o_d.png",
+			"image_url": current_week_weinke_url,
 			"alt_text": "This week's schedule"
+		},
+        {
+			"type": "image",
+			"title": {
+				"type": "plain_text",
+				"text": "Next week's schedule",
+				"emoji": True
+			},
+			"image_url": next_week_weinke_url,
+			"alt_text": "Next week's schedule"
 		},
         {
             "type": "divider"
