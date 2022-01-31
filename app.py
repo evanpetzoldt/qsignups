@@ -13,7 +13,7 @@ from mysql.connector.optionfiles import MySQLOptionsParser
 import os
 import sqlalchemy
 import dataframe_image as dfi
-from weinke_create import weinke_create
+# from weinke_create import weinke_create
 
 
 # def get_categories():
