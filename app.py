@@ -212,6 +212,23 @@ async def refresh_home_tab(client, user_id, logger, top_message):
             "type": "divider"
         },
         {
+            "type": "section",
+            "block_id": "ao_select_block",
+            "text": {
+                "type": "mrkdwn",
+                "text": "Please select an AO to take a Q slot:"
+            },
+            "accessory": {
+                "action_id": "ao-select",
+                "type": "static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select an AO"
+            },
+            "options": options
+            }
+        },
+        {
 			"type": "image",
 			"title": {
 				"type": "plain_text",
@@ -233,23 +250,6 @@ async def refresh_home_tab(client, user_id, logger, top_message):
 		},
         {
             "type": "divider"
-        },
-        {
-            "type": "section",
-            "block_id": "ao_select_block",
-            "text": {
-                "type": "mrkdwn",
-                "text": "Please select an AO to take a Q slot:"
-            },
-            "accessory": {
-                "action_id": "ao-select",
-                "type": "static_select",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Select an AO"
-            },
-            "options": options
-            }
         }
     ]
 
@@ -753,7 +753,7 @@ async def ao_select_slot(ack, client, body, logger):
     FROM schedule_master
     WHERE ao_channel_id = '{ao_channel_id}'
         AND event_date > DATE('{date.today()}')
-    LIMIT {results_load};
+        AND event_date <= DATE('{date.today() + timedelta(weeks=6)}');
     """
 
     # Pull upcoming schedule from db
@@ -783,7 +783,7 @@ async def ao_select_slot(ack, client, body, logger):
     results_df['event_date_time'] = pd.to_datetime(results_df['event_date'].dt.strftime('%Y-%m-%d') + ' ' + results_df['event_time'], infer_datetime_format=True)
     for index, row in results_df.iterrows():
         # Pretty format date
-        date_fmt = row['event_date_time'].strftime("%A, %B %-d @ %H%M")
+        date_fmt = row['event_date_time'].strftime("%a, %m-%d @ %H%M")
         
         # If slot is empty, show green button with primary (green) style button
         if row['q_pax_id'] is None:

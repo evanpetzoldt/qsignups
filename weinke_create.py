@@ -8,7 +8,9 @@ import dataframe_image as dfi
 # import matplotlib
 # import lxml
 import ssl
+from slack_bolt import App
 from slack_sdk import WebClient
+import slack_bolt.app
 
 
 # DB config
@@ -73,7 +75,7 @@ for week in df_list:
   df_prior['event_time'] = df_prior['event_time'].astype(str).str.zfill(4)
   df_compare = df.compare(df_prior)
 
-  if len(df_compare)>0:
+  if len(df_compare)>-1:
     df.to_csv(f'weinkes/{output_name}.csv', index=False)
     
     # date operations
@@ -127,31 +129,32 @@ for week in df_list:
     df_styled = df2.style.set_table_styles(styles).hide_index()
     dfi.export(df_styled,f"weinkes/{output_name}.png")
 
-    # instantiate Slack client
+    # instantiate Slack client (user token this time!)
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
     slack_client = WebClient(
-      config('SLACK_BOT_TOKEN'), ssl=ssl_context
+      config('SLACK_USER_TOKEN'), ssl=ssl_context
     )
-
+  
     # post to channel (bot playground for now)
     response = slack_client.files_upload(
       file=f'weinkes/{output_name}.png',
       initial_comment=output_name,
       channels=['C02UA1QR9H7']
     )
+    response2 = slack_client.files_sharedPublicURL(file=response['file']['id'])
 
     # gather url info
     loc = response['file']['permalink_public']
     secrets = str.split(str.lstrip(loc,'https://slack-files.com/'), '-')
     url = f'https://files.slack.com/files-pri/{secrets[0]}-{secrets[1]}/{output_name}.png?pub_secret={secrets[2]}'
-    url_dict[output_name] = url
 
     # update schedule_weinke table
-    sql_update = f"UPDATE schedule_weinke SET {output_name} = '{url}' WHERE region_schema = {config('DATABASE_SCHEMA')};"
+    sql_update = f"UPDATE schedule_weinkes SET {output_name} = '{url}' WHERE region_schema = '{config('DATABASE_SCHEMA')}';"
     try:
-      with mysql.connector.connect(**db_config).cursor() as mycursor:
+      with mysql.connector.connect(**db_config) as mydb:
+        mycursor = mydb.cursor()
         mycursor.execute(sql_update)
         mycursor.execute("COMMIT;")
     except Exception as e:
