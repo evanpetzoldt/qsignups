@@ -1043,11 +1043,13 @@ async def handle_edit_single_event_button(ack, client, body, logger):
     # gather info needed for input form
     ao_display_name = selected_list[1]
     sql_channel_pull = f'''
-    SELECT q_pax_id, q_pax_name, event_special 
-    FROM schedule_master 
-    WHERE ao_display_name = "{ao_display_name}"
-        AND event_date = "{selected_date_db}"
-        AND event_time = "{selected_time_db}"
+    SELECT m.q_pax_id, m.q_pax_name, m.event_special 
+    FROM schedule_master m
+    INNER JOIN schedule_aos a
+    ON m.ao_channel_id = a.ao_channel_id
+    WHERE a.ao_display_name = "{ao_display_name}"
+        AND m.event_date = "{selected_date_db}"
+        AND m.event_time = "{selected_time_db}"
     ;
     '''
 
