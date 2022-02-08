@@ -37,6 +37,7 @@ ENV_VARIABLE2 = 'oinsegln'
 | SLACK_BOT_TOKEN | A value from the token on the OAuth page in the slack app |
 | SLACK_VERIFICATION_TOKEN | A value from the Basic Information -> Verification Token field in the settings for your slack app |
 | SLACK_SIGNING_SECRET | Secret from the App Credentials page for your app in Slack |
+| SLACK_USER_TOKEN | Secret from Slack that will allow you to upload files - only required if you will be running weinkes. This starts with `xoxp` and will show up under OAuth & Permissions if you have enabled a **user token scope** |
 | DATABASE_SCHEMA | The name of your schema on the central PAXMiner db. This is often your region name |
 | DATABASE_USER | This is the name of the db user that has **write permissions** on the Schema above. This may also be your region name |
 | DATABASE_WRITE_PASSWORD | A write-access password associated with the DB user above. This will be provided by Beaker |
@@ -90,6 +91,12 @@ users:read
 users:read.email
 ```
 
+If you will be running weinkes, you will need to add a User Token Scope in order to upload and publicize weinkes:
+
+```
+files:write
+```
+
 ## Database Instructions
 
 QSignups uses the same central MySQL database as PAXMiner. You will need to request a write-access user and password from Beaker associated with your region's schema. The following empty tables will then need to be created (currently demonstrated in `db_initialize.py`):
@@ -104,7 +111,7 @@ Once these tables are created, you will be able to manage them through QSignups 
 
 ![Alt text](/screens/mytable.png?raw=true "Sample Weekly Q Weinke")
 
-`weinke_create.py` is capable of automatically producing something like the table above. Unfortunately, the package that produces this relies on having a Chrome executable on the host machine, which to my knowledge isn't something we could set up on the Azure App Service. In addition, I'm not sure it's possible to set up a scheduled event in an app service. So for now, I'm planning on setting up a scheduled run on my local machine. I will post instructions on doing that for those interested.
+`weinke_create.py` is capable of automatically producing something like the table above. Unfortunately, the python package that produces this relies on having a Chrome executable on the host machine, which to my knowledge isn't something we could set up on the Azure App Service. In addition, I'm not sure it's possible to set up a scheduled event in an app service. So for now, I'm planning on setting up a scheduled run on my local machine. I will post instructions on doing that for those interested.
 
 We may be able to set that up on a free Azure VM at some point in the future.
 
@@ -118,12 +125,12 @@ If you find bugs, you can reach out on Slack or (even better) add the issue to m
 * AOs can be added to the list via the UI
 * Weekly beatdown schedules can be added to the calendar via the UI
 * Users can take Q slots and the calendar db will be updated
+* Users can take themselves off Q slots (Slack admins can also do this for others)
 
 ### Feature Requests / Roadmap
 * More calendar management UI functionality:
   * Add single (non-recurring) events
   * Delete single and / or recurring events
-  * Remove Q from slot (ideally non-admin users could do this for themselves)
   * Edit an AO (name change, etc.)
   * Edit an event (time change, special qualifier like VQ, etc.)
 * Ability for users to edit their own events (special qualifiers like birthday Q or VQ)

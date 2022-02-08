@@ -1,4 +1,5 @@
 import logging
+from unittest import result
 # from sre_constants import SUCCESS
 from decouple import config, UndefinedValueError
 from fastapi import FastAPI, Request
@@ -942,7 +943,7 @@ async def handle_taken_date_select_button(ack, client, body, logger):
             "type": "section",
             "text": {
                 "type": "mrkdwn", 
-                "text": f"Are you sure you want to take {label} off this Q slot?"
+                "text": f"Would you like to edit or clear this slot?"
             }
         },
         {
@@ -952,7 +953,22 @@ async def handle_taken_date_select_button(ack, client, body, logger):
                     "type":"button",
                     "text":{
                         "type":"plain_text",
-                        "text":f"Yes, take {label2} off this Q slot",
+                        "text":f"Edit this event",
+                        "emoji":True
+                    },
+                    "value":f"{selected_date}|{selected_ao}",
+                    "action_id":"edit_single_event_button"
+                }
+            ]
+        },
+        {
+            "type":"actions",
+            "elements":[
+                {
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":f"Take {label2} off this Q slot",
                         "emoji":True
                     },
                     "value":f"{selected_date}|{selected_ao}",
@@ -968,7 +984,7 @@ async def handle_taken_date_select_button(ack, client, body, logger):
                     "type":"button",
                     "text":{
                         "type":"plain_text",
-                        "text":"No, never mind",
+                        "text":"Cancel",
                         "emoji":True
                     },
                     "action_id":"cancel_button_select"
@@ -995,6 +1011,207 @@ async def handle_taken_date_select_button(ack, client, body, logger):
     #   block 2: danger button to take Q off slot
     #   block 3: cancel button that takes the user back home
 
+
+# triggered when user hits cancel or some other button that takes them home
+@slack_app.action("edit_single_event_button")
+async def handle_edit_single_event_button(ack, client, body, logger):
+    # acknowledge action and log payload
+    await ack()
+    logger.info(body)
+    user_id = body['user']['id']
+    # user_name = (await get_user_names([user_id], logger, client))[0]
+
+    # gather and format selected date and time
+    selected_list = str.split(body['actions'][0]['value'],'|')
+    selected_date = selected_list[0]
+    selected_date_dt = datetime.strptime(selected_date, '%Y-%m-%d %H:%M:%S')
+    selected_date_db = datetime.date(selected_date_dt).strftime('%Y-%m-%d')
+    selected_time_db = datetime.time(selected_date_dt).strftime('%H%M')
+
+    # gather info needed for input form
+    ao_display_name = selected_list[1]
+    sql_channel_pull = f'''
+    SELECT q_pax_id, q_pax_name, event_special 
+    FROM schedule_master 
+    WHERE ao_display_name = "{ao_display_name}"
+        AND event_date = "{selected_date_db}"
+        AND event_time = "{selected_time_db}"
+    ;
+    '''
+
+    try:
+        with mysql.connector.connect(**db_config) as mydb:
+            result_df = pd.read_sql_query(sql_channel_pull, mydb)
+    except Exception as e:
+        logger.error(f"Error pulling event info: {e}")
+    
+    q_pax_id = result_df.loc[0,'q_pax_id']
+    event_special = result_df.loc[0,'event_special']
+
+    # build special qualifier
+    # TODO: have "other" / freeform option
+    special_list = [
+        'None',
+        'The Forge',
+        'VQ',
+        'F3versary',
+        'Birthday Q'
+    ]
+    special_options = []
+    for option in special_list:
+        new_option = {
+            "text": {
+                "type": "plain_text",
+                "text": option,
+                "emoji": True
+            },
+            "value": option
+        }
+        special_options.append(new_option)
+    
+    if event_special in special_list:
+        initial_special = special_options[special_list.index(event_special)]
+    else:
+        initial_special = special_options[0]
+    
+    # Build blocks
+    blocks = [
+        {
+			"type": "input",
+            "block_id": "edit_event_datepicker",
+			"element": {
+				"type": "datepicker",
+				"initial_date": selected_date_dt.strftime('%Y-%m-%d'),
+				"placeholder": {
+					"type": "plain_text",
+					"text": "Select date",
+					"emoji": True
+				},
+				"action_id": "edit_event_datepicker"
+			},
+			"label": {
+				"type": "plain_text",
+				"text": "Event Date",
+				"emoji": True
+			}
+		},
+		{
+			"type": "input",
+            "block_id": "edit_event_timepicker",
+			"element": {
+				"type": "timepicker",
+				"initial_time": datetime.time(selected_date_dt).strftime('%H:%M'),
+				"placeholder": {
+					"type": "plain_text",
+					"text": "Select time",
+					"emoji": True
+				},
+				"action_id": "edit_event_timepicker"
+			},
+			"label": {
+				"type": "plain_text",
+				"text": "Event Time",
+				"emoji": True
+			}
+		},
+        		{
+			"type": "input",
+            "block_id": "edit_event_q_select",
+			"element": {
+				"type": "multi_users_select",
+				"placeholder": {
+					"type": "plain_text",
+					"text": "Select the Q",
+					"emoji": True
+				},
+				"action_id": "edit_event_q_select",
+                "initial_users": [q_pax_id],
+                "max_selected_items": 1
+			},
+			"label": {
+				"type": "plain_text",
+				"text": "Q",
+				"emoji": True
+			}
+		},
+        {
+            "type": "input",
+            "block_id": "edit_event_special_select",
+            "element": {
+                "type": "static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Special event?",
+                    "emoji": True   
+                },
+                "options": special_options,
+                "initial_option": initial_special,
+                "action_id": "edit_event_special_select"
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Special Event Qualifier",
+                "emoji": True
+            }  
+        }
+    ]
+
+    # Sumbit / Cancel buttons
+    action_button = {
+        "type":"actions",
+        "elements":[
+            {
+                "type":"button",
+                "text":{
+                    "type":"plain_text",
+                    "text":"Submit",
+                    "emoji":True
+                },
+                "action_id":"sumbit_edit_event_button",
+                "style":"primary",
+                "value":"Submit"
+            }
+        ]    
+    }
+    cancel_button = {
+        "type":"actions",
+        "elements":[
+            {
+                "type":"button",
+                "text":{
+                    "type":"plain_text",
+                    "text":"Cancel",
+                    "emoji":True
+                },
+                "action_id":"cancel_button_select",
+                "style":"danger",
+                "value":"Cancel"
+            }
+        ]    
+    }
+    blocks.append(action_button)
+    blocks.append(cancel_button)
+
+    # Publish view
+    try:
+        await client.views_publish(
+            user_id=user_id,
+            token=config('SLACK_BOT_TOKEN'),
+            view={
+                "type": "home",
+                "blocks": blocks
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error publishing home tab: {e}")
+        print(e)
+
+# triggered when user hits submit on event edit
+@slack_app.action("sumbit_edit_event_button")
+async def handle_sumbit_edit_event_button(ack, client, body, logger):
+    # acknowledge action and log payload
+    await ack()
+    logger.info(body)
 
 # triggered when user hits cancel or some other button that takes them home
 @slack_app.action("clear_slot_button")

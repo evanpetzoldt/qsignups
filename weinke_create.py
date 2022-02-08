@@ -64,8 +64,7 @@ df_list = [
   [df_next, 'next_week_weinke']
 ]
 
-# url_dict = {}
-week = df_list[0]
+
 for week in df_list:
   df = week[0]
   output_name = week[1]
@@ -73,9 +72,9 @@ for week in df_list:
   # Pull up prior processed data for comparison
   df_prior = pd.read_csv(f'weinkes/{output_name}.csv')
   df_prior['event_time'] = df_prior['event_time'].astype(str).str.zfill(4)
-  df_compare = df.compare(df_prior)
+  # df_compare = df.compare(df_prior)
 
-  if len(df_compare)>-1:
+  if 1==1: #len(df_compare)>-1:
     df.to_csv(f'weinkes/{output_name}.csv', index=False)
     
     # date operations
@@ -85,7 +84,8 @@ for week in df_list:
     df.reset_index(inplace=True)
 
     # Build cell labels
-    df.loc[df['q_pax_name'].isna(), 'q_pax_name'] = 'OPEN!'
+    df.loc[df['ao_display_name'] != "Founders Park", 'q_pax_name'] = 'NOT YET LIVE'
+    df.loc[df['q_pax_name'].isna() & (df['ao_display_name'] == "Founders Park"), 'q_pax_name'] = 'OPEN!'
     df['label'] = df['q_pax_name'] + '\n' + df['event_time']
     df['AO\nLocation'] = df['ao_display_name'] + '\n' + df['ao_location_subtitle']
 
@@ -97,6 +97,7 @@ for week in df_list:
     df2.sort_index(axis=1, level=['event_date_fmt'], inplace=True)
     df2.columns = df2.columns.map('\n'.join).str.strip('\n')
     df2.reset_index(inplace=True)
+    df2 = df2[df2['AO\nLocation'] == "Founders Park\nLake St. Louis"]
 
     # Set CSS properties for th elements in dataframe
     th_props = [
