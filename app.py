@@ -42,6 +42,18 @@ OPTIONAL_INPUT_VALUE = "None"
 schedule_create_length_days = 365
 results_load = 20
 
+siteq_list = [
+    "U025H3PM1S9",
+    "U02G54HHEMQ",
+    "U025DGM978E",
+    "U02B3227FB9",
+    "U01V4AQ9MRS",
+    "U025SBR0RTN",
+    "U025DAXFW22",
+    "U025YNHJ54Z",
+    "U0216AFRU9H"
+]
+
 # Configure mysql db
 db_config = {
     "host":"f3stlouis.cac36jsyb5ss.us-east-2.rds.amazonaws.com",
@@ -258,7 +270,7 @@ async def refresh_home_tab(client, user_id, logger, top_message):
     user_info_dict = await client.users_info(
         user=user_id
     )
-    if user_info_dict['user']['is_admin']:
+    if user_info_dict['user']['is_admin'] or (user_id in siteq_list):
         admin_button = {
             "type":"actions",
             "elements":[
@@ -936,7 +948,7 @@ async def handle_taken_date_select_button(ack, client, body, logger):
     selected_ao = body['view']['blocks'][1]['text']['text'].replace('*','')
     
 
-    if (user_name == selected_user) or user_admin:
+    if (user_name == selected_user) or user_admin or (user_id in siteq_list):
         label = 'yourself' if user_name == selected_user else selected_user
         label2 = 'myself' if user_name == selected_user else selected_user
         blocks = [{
