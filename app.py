@@ -1048,7 +1048,7 @@ async def handle_edit_single_event_button(ack, client, body, logger):
     INNER JOIN schedule_aos a
     ON m.ao_channel_id = a.ao_channel_id
     WHERE a.ao_display_name = "{ao_display_name}"
-        AND m.event_date = "{selected_date_db}"
+        AND m.event_date = DATE("{selected_date_db}")
         AND m.event_time = "{selected_time_db}"
     ;
     '''
