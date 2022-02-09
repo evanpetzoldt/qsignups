@@ -339,7 +339,8 @@ async def handle_manager_schedule_button(ack, body, client, logger):
 
     button_list = [
         "Add an AO",
-        "Add an event"
+        "Add an event",
+        "Edit an event"
     ]
 
     for button in button_list:
@@ -485,6 +486,7 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
         except Exception as e:
             logger.error(f"Error publishing home tab: {e}")
             print(e)
+    # Add an event
     elif selected_action == 'Add an event':
         logging.info('add an event')
 
@@ -638,6 +640,60 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
         except Exception as e:
             logger.error(f"Error publishing home tab: {e}")
             print(e)
+    # Edit an event
+    elif selected_action == 'Edit an event':
+        logging.info('add an event')
+
+        # list of AOs for dropdown
+        sql_ao_list = "SELECT ao_display_name FROM schedule_aos ORDER BY ao_display_name;"
+        try:
+            with mysql.connector.connect(**db_config) as mydb:
+                ao_list = pd.read_sql(sql_ao_list, mydb)
+                ao_list = ao_list['ao_display_name'].values.tolist()
+        except Exception as e:
+            logger.error(f"Error pulling AO list: {e}")
+
+        ao_options = []
+        for option in ao_list:
+            new_option = {
+                "text": {
+                    "type": "plain_text",
+                    "text": option,
+                    "emoji": True
+                },
+                "value": option
+            }
+            ao_options.append(new_option)
+
+        blocks = [
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": "Please select an AO to edit:"}
+            },
+            {
+                "type": "section",
+                "block_id": "ao_select_block",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "Please select an AO to take a Q slot:"
+                },
+                "accessory": {
+                    "action_id": "ao-select",
+                    "type": "static_select",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select an AO"
+                },
+                "options": ao_options
+                }
+            }
+        ]
+
+@slack_app.action("edit_event_ao_select")
+async def handle_edit_event_ao_select(ack, body, client, logger):
+    await ack()
+    logger.info(body)
+    user_id = body['user']['id']
 
 @slack_app.action("submit_add_ao_button")
 async def handle_submit_add_ao_button(ack, body, client, logger):
@@ -1190,7 +1246,7 @@ async def handle_edit_single_event_button(ack, client, body, logger):
                     "text":"Submit",
                     "emoji":True
                 },
-                "action_id":"sumbit_edit_event_button",
+                "action_id":"submit_edit_event_button",
                 "style":"primary",
                 "value":ao_channel_id
             }
@@ -1229,9 +1285,10 @@ async def handle_edit_single_event_button(ack, client, body, logger):
         logger.error(f"Error publishing home tab: {e}")
         print(e)
 
+
 # triggered when user hits submit on event edit
-@slack_app.action("sumbit_edit_event_button")
-async def handle_sumbit_edit_event_button(ack, client, body, logger):
+@slack_app.action("submit_edit_event_button")
+async def handle_submit_edit_event_button(ack, client, body, logger):
     # acknowledge action and log payload
     await ack()
     logger.info(body)
