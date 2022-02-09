@@ -1298,7 +1298,7 @@ async def handle_submit_edit_event_button(ack, client, body, logger):
     original_info = body['view']['blocks'][0]['text']['text']
     ignore, event, q_name = original_info.split('\n')
     original_date, original_time, original_ao_name = event.split(' @ ')
-    original_channel_id = body['actions']['value']
+    original_channel_id = body['actions'][0]['value']
 
     results = body['view']['state']['values']
     selected_date = results['edit_event_datepicker']['edit_event_datepicker']['selected_date']
