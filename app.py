@@ -1043,7 +1043,7 @@ async def handle_edit_single_event_button(ack, client, body, logger):
     # gather info needed for input form
     ao_display_name = selected_list[1]
     sql_channel_pull = f'''
-    SELECT m.q_pax_id, m.q_pax_name, m.event_special 
+    SELECT m.q_pax_id, m.q_pax_name, m.event_special, m.ao_channel_id 
     FROM schedule_master m
     INNER JOIN schedule_aos a
     ON m.ao_channel_id = a.ao_channel_id
@@ -1060,7 +1060,9 @@ async def handle_edit_single_event_button(ack, client, body, logger):
         logger.error(f"Error pulling event info: {e}")
     
     q_pax_id = result_df.loc[0,'q_pax_id']
+    q_pax_name = result_df.loc[0,'q_pax_name']
     event_special = result_df.loc[0,'event_special']
+    ao_channel_id = result_df.loc[0,'ao_channel_id']
 
     # build special qualifier
     # TODO: have "other" / freeform option
@@ -1090,6 +1092,13 @@ async def handle_edit_single_event_button(ack, client, body, logger):
     
     # Build blocks
     blocks = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn", 
+                "text": f"Editing info for:\n{selected_date_db} @ {selected_time_db} @ {ao_display_name}\nQ: {q_pax_name}"
+            }
+        },
         {
 			"type": "input",
             "block_id": "edit_event_datepicker",
@@ -1183,7 +1192,7 @@ async def handle_edit_single_event_button(ack, client, body, logger):
                 },
                 "action_id":"sumbit_edit_event_button",
                 "style":"primary",
-                "value":"Submit"
+                "value":ao_channel_id
             }
         ]    
     }
@@ -1226,6 +1235,63 @@ async def handle_sumbit_edit_event_button(ack, client, body, logger):
     # acknowledge action and log payload
     await ack()
     logger.info(body)
+    user_id = body['user']['id']
+
+    # gather inputs
+    original_info = body['view']['blocks'][0]['text']['text']
+    ignore, event, q_name = original_info.split('\n')
+    original_date, original_time, original_ao_name = event.split(' @ ')
+    original_channel_id = body['actions']['value']
+
+    results = body['view']['state']['values']
+    selected_date = results['edit_event_datepicker']['edit_event_datepicker']['selected_date']
+    selected_time = results['edit_event_timepicker']['edit_event_timepicker']['selected_time']
+    selected_q_id = results['edit_event_q_select']['edit_event_q_select']['selected_users'][0]
+    selected_special = results['edit_event_special_select']['edit_event_special_select']['selected_option']['text']['text']
+    if selected_special == 'None':
+        selected_special_fmt = 'NULL'
+    else:
+        selected_special_fmt = f'"{selected_special}"'
+    user_info_dict = await client.users_info(user=selected_q_id)
+    selected_q_name = safeget(user_info_dict, 'user', 'profile', 'display_name') or safeget(
+            user_info_dict, 'user', 'profile', 'real_name') or None
+
+    # construct and run 
+    sql_update = \
+    f'''
+    UPDATE schedule_master 
+    SET q_pax_id = "{selected_q_id}"
+        , q_pax_name = "{selected_q_name}"
+        , event_date = DATE("{selected_date}")
+        , event_time = "{selected_time}"
+        , event_special = {selected_special_fmt}
+    WHERE ao_channel_id = "{original_channel_id}"
+        AND event_date = DATE("{original_date}")
+        AND event_time = "{original_time}"
+    ;
+    '''
+
+    # Attempt db update
+    logging.info(f'Attempting SQL UPDATE: {sql_update}')
+    success_status = False
+    try:
+        with mysql.connector.connect(**db_config) as mydb:
+            mycursor = mydb.cursor()
+            mycursor.execute(sql_update)
+            mycursor.execute("COMMIT;")
+            success_status = True
+    except Exception as e:
+        logger.error(f"Error updating schedule: {e}")
+        error_msg = e
+
+    # Generate top message and go back home
+    if success_status:
+        top_message = f"Got it! I've edited this slot with the following values: {selected_date} @ {selected_time} @ {original_ao_name} - Q: {selected_q_name} - Special: {selected_special}."
+        # TODO: if selected date was in weinke range (current or next week), update local weinke png
+    else:
+        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
+    
+    await refresh_home_tab(client, user_id, logger, top_message)
 
 # triggered when user hits cancel or some other button that takes them home
 @slack_app.action("clear_slot_button")
