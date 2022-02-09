@@ -1302,7 +1302,7 @@ async def handle_submit_edit_event_button(ack, client, body, logger):
 
     results = body['view']['state']['values']
     selected_date = results['edit_event_datepicker']['edit_event_datepicker']['selected_date']
-    selected_time = results['edit_event_timepicker']['edit_event_timepicker']['selected_time']
+    selected_time = results['edit_event_timepicker']['edit_event_timepicker']['selected_time'].replace(':','')
     selected_q_id = results['edit_event_q_select']['edit_event_q_select']['selected_users'][0]
     selected_special = results['edit_event_special_select']['edit_event_special_select']['selected_option']['text']['text']
     if selected_special == 'None':
