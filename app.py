@@ -194,7 +194,7 @@ async def refresh_home_tab(client, user_id, logger, top_message):
 
     # Extend top message with upcoming qs list
     if len(upcoming_qs_df) > 0:
-        top_message += ' You have some upcoming Qs:'
+        top_message += '\n\nYou have some upcoming Qs:'
         for index, row in upcoming_qs_df.iterrows():
             dt_fmt = row['event_date'].strftime("%m-%d-%Y")
             top_message += f"\n- {dt_fmt} @ {row['event_time']} at {row['ao_display_name']}" 
