@@ -665,6 +665,7 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
             }
             ao_options.append(new_option)
 
+        # Build blocks
         blocks = [
             {
                 "type": "section",
@@ -678,7 +679,7 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
                     "text": "Please select an AO to take a Q slot:"
                 },
                 "accessory": {
-                    "action_id": "ao-select",
+                    "action_id": "edit_event_ao_select",
                     "type": "static_select",
                     "placeholder": {
                         "type": "plain_text",
@@ -689,11 +690,131 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
             }
         ]
 
+        # Publish view
+        try:
+            await client.views_publish(
+                user_id=user_id,
+                token=config('SLACK_BOT_TOKEN'),
+                view={
+                    "type": "home",
+                    "blocks": blocks
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error publishing home tab: {e}")
+            print(e)
+
 @slack_app.action("edit_event_ao_select")
 async def handle_edit_event_ao_select(ack, body, client, logger):
     await ack()
     logger.info(body)
     user_id = body['user']['id']
+    ao_display_name = body['actions'][0]['selected_option']['text']['text']
+    ao_channel_id = body['actions'][0]['selected_option']['value']
+
+    # Generate SQL pull
+    # TODO: make this specific to event type
+    sql_pull = f"""
+    SELECT m.*, a.ao_display_name
+    FROM schedule_master m
+    INNER JOIN schedule_aos a
+    ON m.ao_channel_id = a.ao_channel_id
+    WHERE mao_channel_id = '{ao_channel_id}'
+        AND m.event_date > DATE('{date.today()}')
+        AND m.event_date <= DATE('{date.today() + timedelta(weeks=10)}');
+    """
+
+    # Pull upcoming schedule from db
+    logging.info(f'Pulling from db, attempting SQL: {sql_pull}')
+    try:
+        with mysql.connector.connect(**db_config) as mydb:
+            results_df = pd.read_sql_query(sql_pull, mydb, parse_dates=['event_date'])
+    except Exception as e:
+        logger.error(f"Error pulling from schedule_master: {e}")
+
+    # Construct view
+    # Top of view
+    blocks = [{
+        "type": "section",
+        "text": {"type": "mrkdwn", "text": "Please select an Q slot to edit for:"}
+    },
+    {
+        "type": "section",
+        "text": {"type": "mrkdwn", "text": f"*{ao_display_name}*"}
+    },
+    {
+        "type": "divider"
+    }]
+
+    # Show next x number of events
+    # TODO: future add: make a "show more" button?
+    results_df['event_date_time'] = pd.to_datetime(results_df['event_date'].dt.strftime('%Y-%m-%d') + ' ' + results_df['event_time'], infer_datetime_format=True)
+    for index, row in results_df.iterrows():
+        # Pretty format date
+        date_fmt = row['event_date_time'].strftime("%a, %m-%d @ %H%M")
+        date_fmt_value = row['event_date_time'].strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Build buttons
+        if row['q_pax_id'] is None:
+            date_status = "OPEN!"
+        else: 
+            date_status = row['q_pax_name']
+        
+        action_id = "edit_single_event_button"
+        value = date_fmt_value + '|' + row['ao_display_name']
+        
+        # Button template
+        new_button = {
+            "type":"actions",
+            "elements":[
+                {
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":f"{date_fmt}: {date_status}",
+                        "emoji":True
+                    },
+                    "action_id":action_id,
+                    "value":value
+                }
+            ]
+        }
+        
+        # Append button to list
+        blocks.append(new_button)
+    
+    # Cancel button
+    new_button = {
+        "type":"actions",
+        "elements":[
+            {
+                "type":"button",
+                "text":{
+                    "type":"plain_text",
+                    "text":"Cancel",
+                    "emoji":True
+                },
+                "action_id":"cancel_button_select",
+                "value":"cancel",
+                "style":"danger"
+            }
+        ]
+    }
+    blocks.append(new_button)
+    
+    # Publish view
+    try:
+        await client.views_publish(
+            user_id=user_id,
+            token=config('SLACK_BOT_TOKEN'),
+            view={
+                "type": "home",
+                "blocks": blocks
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error publishing home tab: {e}")
+        print(e)
 
 @slack_app.action("submit_add_ao_button")
 async def handle_submit_add_ao_button(ack, body, client, logger):
