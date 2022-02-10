@@ -642,7 +642,7 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
             print(e)
     # Edit an event
     elif selected_action == 'Edit an event':
-        logging.info('add an event')
+        logging.info('Edit an event')
 
         # list of AOs for dropdown
         sql_ao_list = "SELECT ao_display_name FROM schedule_aos ORDER BY ao_display_name;"
@@ -669,14 +669,10 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
         blocks = [
             {
                 "type": "section",
-                "text": {"type": "mrkdwn", "text": "Please select an AO to edit:"}
-            },
-            {
-                "type": "section",
                 "block_id": "ao_select_block",
                 "text": {
                     "type": "mrkdwn",
-                    "text": "Please select an AO to take a Q slot:"
+                    "text": "Please select an AO to edit:"
                 },
                 "accessory": {
                     "action_id": "edit_event_ao_select",
@@ -719,7 +715,7 @@ async def handle_edit_event_ao_select(ack, body, client, logger):
     FROM schedule_master m
     INNER JOIN schedule_aos a
     ON m.ao_channel_id = a.ao_channel_id
-    WHERE mao_channel_id = '{ao_channel_id}'
+    WHERE m.ao_channel_id = '{ao_channel_id}'
         AND m.event_date > DATE('{date.today()}')
         AND m.event_date <= DATE('{date.today() + timedelta(weeks=10)}');
     """
@@ -736,7 +732,7 @@ async def handle_edit_event_ao_select(ack, body, client, logger):
     # Top of view
     blocks = [{
         "type": "section",
-        "text": {"type": "mrkdwn", "text": "Please select an Q slot to edit for:"}
+        "text": {"type": "mrkdwn", "text": "Please select a Q slot to edit for:"}
     },
     {
         "type": "section",
