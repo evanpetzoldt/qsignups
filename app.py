@@ -1261,7 +1261,20 @@ async def handle_edit_single_event_button(ack, client, body, logger):
         initial_special = special_options[special_list.index(event_special)]
     else:
         initial_special = special_options[0]
-    
+
+    user_select_element = {
+        "type": "multi_users_select",
+        "placeholder": {
+            "type": "plain_text",
+            "text": "Select the Q",
+            "emoji": True
+        },
+        "action_id": "edit_event_q_select",
+        "max_selected_items": 1
+    }
+    if q_pax_id is not None:
+        user_select_element['initial_users'] = [q_pax_id]
+
     # Build blocks
     blocks = [
         {
@@ -1309,20 +1322,10 @@ async def handle_edit_single_event_button(ack, client, body, logger):
 				"emoji": True
 			}
 		},
-        		{
+        {
 			"type": "input",
             "block_id": "edit_event_q_select",
-			"element": {
-				"type": "multi_users_select",
-				"placeholder": {
-					"type": "plain_text",
-					"text": "Select the Q",
-					"emoji": True
-				},
-				"action_id": "edit_event_q_select",
-                "initial_users": [q_pax_id],
-                "max_selected_items": 1
-			},
+			"element": user_select_element,
 			"label": {
 				"type": "plain_text",
 				"text": "Q",
