@@ -645,23 +645,22 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
         logging.info('Edit an event')
 
         # list of AOs for dropdown
-        sql_ao_list = "SELECT ao_display_name FROM schedule_aos ORDER BY ao_display_name;"
+        sql_ao_list = "SELECT * FROM schedule_aos ORDER BY ao_display_name;"
         try:
             with mysql.connector.connect(**db_config) as mydb:
-                ao_list = pd.read_sql(sql_ao_list, mydb)
-                ao_list = ao_list['ao_display_name'].values.tolist()
+                ao_df = pd.read_sql(sql_ao_list, mydb)
         except Exception as e:
             logger.error(f"Error pulling AO list: {e}")
 
         ao_options = []
-        for option in ao_list:
+        for index, row in ao_df.iterrows():
             new_option = {
                 "text": {
                     "type": "plain_text",
-                    "text": option,
+                    "text": row['ao_display_name'],
                     "emoji": True
                 },
-                "value": option
+                "value": row['ao_channel_id']
             }
             ao_options.append(new_option)
 
@@ -710,15 +709,15 @@ async def handle_edit_event_ao_select(ack, body, client, logger):
 
     # Generate SQL pull
     # TODO: make this specific to event type
-    sql_pull = f"""
+    sql_pull = f'''
     SELECT m.*, a.ao_display_name
     FROM schedule_master m
     INNER JOIN schedule_aos a
     ON m.ao_channel_id = a.ao_channel_id
-    WHERE m.ao_channel_id = '{ao_channel_id}'
-        AND m.event_date > DATE('{date.today()}')
-        AND m.event_date <= DATE('{date.today() + timedelta(weeks=10)}');
-    """
+    WHERE a.ao_channel_id = "{ao_channel_id}"
+        AND m.event_date > DATE("{date.today()}")
+        AND m.event_date <= DATE("{date.today() + timedelta(weeks=10)}");
+    '''
 
     # Pull upcoming schedule from db
     logging.info(f'Pulling from db, attempting SQL: {sql_pull}')
