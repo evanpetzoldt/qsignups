@@ -149,12 +149,12 @@ async def refresh_home_tab(client, user_id, logger, top_message):
             upcoming_qs_df = pd.read_sql(sql_upcoming_qs, mydb, parse_dates=['event_date'])
             ao_list = pd.read_sql(sql_ao_list, mydb)
             
-            #if config('USE_WEINKES'):
-            mycursor = mydb.cursor()
-            mycursor.execute(sql_weinkes)
-            weinkes_list = mycursor.fetchone()
-            current_week_weinke_url = weinkes_list[0]
-            next_week_weinke_url = weinkes_list[1] 
+            if config('USE_WEINKES'):
+                mycursor = mydb.cursor()
+                mycursor.execute(sql_weinkes)
+                weinkes_list = mycursor.fetchone()
+                current_week_weinke_url = weinkes_list[0]
+                next_week_weinke_url = weinkes_list[1] 
     except Exception as e:
         logger.error(f"Error pulling user db info: {e}")
 
@@ -208,33 +208,36 @@ async def refresh_home_tab(client, user_id, logger, top_message):
             }
         }
     ]
-    #if config('USE_WEINKES'):
-    weinke_blocks = [
-        {
-            "type": "image",
-            "title": {
-                "type": "plain_text",
-                "text": "This week's schedule",
-                "emoji": True
+    
+    if config('USE_WEINKES'):
+        weinke_blocks = [
+            {
+                "type": "image",
+                "title": {
+                    "type": "plain_text",
+                    "text": "This week's schedule",
+                    "emoji": True
+                },
+                "image_url": current_week_weinke_url,
+                "alt_text": "This week's schedule"
             },
-            "image_url": current_week_weinke_url,
-            "alt_text": "This week's schedule"
-        },
-        {
-            "type": "image",
-            "title": {
-                "type": "plain_text",
-                "text": "Next week's schedule",
-                "emoji": True
+            {
+                "type": "image",
+                "title": {
+                    "type": "plain_text",
+                    "text": "Next week's schedule",
+                    "emoji": True
+                },
+                "image_url": next_week_weinke_url,
+                "alt_text": "Next week's schedule"
             },
-            "image_url": next_week_weinke_url,
-            "alt_text": "Next week's schedule"
-        },
-        {
-            "type": "divider"
-        }
-    ]
-    blocks.append(weinke_blocks)
+            {
+                "type": "divider"
+            }
+        ]
+
+        for block in weinke_blocks:
+            blocks.append(block)
 
     # Optionally add admin button
     user_info_dict = await client.users_info(
