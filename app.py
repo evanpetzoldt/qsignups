@@ -13,46 +13,11 @@ import mysql.connector
 from mysql.connector.optionfiles import MySQLOptionsParser
 import os
 import sqlalchemy
-import dataframe_image as dfi
-# from weinke_create import weinke_create
 
 
-# def get_categories():
-#     with open('categories.json') as c:
-#         data = json.load(c)
-#         return data
-
-
-# def formatted_categories(filteredcats):
-#     opts = []
-#     for cat in filteredcats:
-#         x = {
-#             "text": {
-#                 "type": "plain_text",
-#                 "text": cat["name"]
-#             },
-#             "value": str(cat["id"])
-#         }
-#         opts.append(x)
-#     return opts
-
-# I think this is only used for email stuff at the moment
-OPTIONAL_INPUT_VALUE = "None"
-
+# Inputs
 schedule_create_length_days = 365
-results_load = 20
-
-siteq_list = [
-    "U025H3PM1S9",
-    "U02G54HHEMQ",
-    "U025DGM978E",
-    "U02B3227FB9",
-    "U01V4AQ9MRS",
-    "U025SBR0RTN",
-    "U025DAXFW22",
-    "U025YNHJ54Z",
-    "U0216AFRU9H"
-]
+siteq_list = json.loads(config('SITEQ_LIST'))
 
 # Configure mysql db
 db_config = {
@@ -184,11 +149,12 @@ async def refresh_home_tab(client, user_id, logger, top_message):
             upcoming_qs_df = pd.read_sql(sql_upcoming_qs, mydb, parse_dates=['event_date'])
             ao_list = pd.read_sql(sql_ao_list, mydb)
             
-            mycursor = mydb.cursor()
-            mycursor.execute(sql_weinkes)
-            weinkes_list = mycursor.fetchone()
-            current_week_weinke_url = weinkes_list[0]
-            next_week_weinke_url = weinkes_list[1] 
+            if config('USE_WEINKES'):
+                mycursor = mydb.cursor()
+                mycursor.execute(sql_weinkes)
+                weinkes_list = mycursor.fetchone()
+                current_week_weinke_url = weinkes_list[0]
+                next_week_weinke_url = weinkes_list[1] 
     except Exception as e:
         logger.error(f"Error pulling user db info: {e}")
 
@@ -240,31 +206,35 @@ async def refresh_home_tab(client, user_id, logger, top_message):
             },
             "options": options
             }
-        },
-        {
-			"type": "image",
-			"title": {
-				"type": "plain_text",
-				"text": "This week's schedule",
-				"emoji": True
-			},
-			"image_url": current_week_weinke_url,
-			"alt_text": "This week's schedule"
-		},
-        {
-			"type": "image",
-			"title": {
-				"type": "plain_text",
-				"text": "Next week's schedule",
-				"emoji": True
-			},
-			"image_url": next_week_weinke_url,
-			"alt_text": "Next week's schedule"
-		},
-        {
-            "type": "divider"
         }
     ]
+    if config('USE_WEINKES'):
+        weinke_blocks = [
+            {
+                "type": "image",
+                "title": {
+                    "type": "plain_text",
+                    "text": "This week's schedule",
+                    "emoji": True
+                },
+                "image_url": current_week_weinke_url,
+                "alt_text": "This week's schedule"
+            },
+            {
+                "type": "image",
+                "title": {
+                    "type": "plain_text",
+                    "text": "Next week's schedule",
+                    "emoji": True
+                },
+                "image_url": next_week_weinke_url,
+                "alt_text": "Next week's schedule"
+            },
+            {
+                "type": "divider"
+            }
+        ]
+        blocks.append(weinke_blocks)
 
     # Optionally add admin button
     user_info_dict = await client.users_info(
@@ -591,6 +561,25 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
                 }
 		    },
             {
+                "type": "input",
+                "block_id": "add_event_datepicker",
+                "element": {
+                    "type": "datepicker",
+                    "initial_date": date.today().strftime('%Y-%m-%d'),
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select date",
+                        "emoji": True
+                    },
+                    "action_id": "add_event_datepicker"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Event Date",
+                    "emoji": True
+                }
+            },
+            {
                 "type": "actions",
                 "block_id": "submit_cancel_buttons",
                 "elements": [
@@ -860,6 +849,7 @@ async def handle_submit_add_event_button(ack, body, client, logger):
     input_data = body['view']['state']['values']
     ao_display_name = input_data['ao_display_name_select']['ao_display_name_select_action']['selected_option']['value']
     event_day_of_week = input_data['event_day_of_week_select']['event_day_of_week_select_action']['selected_option']['value']
+    starting_date = input_data['add_event_datepicker']['add_event_datepicker']['selected_date']
     event_time = input_data['event_time_select']['event_time_select']['selected_time'].replace(':','')
     event_type = 'Beatdown' # eventually this will be dynamic
     event_recurring = True # this would be false for one-time events
@@ -895,7 +885,7 @@ VALUES ("{ao_channel_id}", "{event_day_of_week}", "{event_time}", "{event_type}"
     try:
         with mysql.connector.connect(**db_config) as mydb:
             mycursor = mydb.cursor()
-            iterate_date = date.today()
+            iterate_date = datetime.strptime(starting_date, '%Y-%m-%d').date()
             while iterate_date < (date.today() + timedelta(days=schedule_create_length_days)):
                 if iterate_date.strftime('%A') == event_day_of_week:
                     sql_insert = f"""
@@ -1542,28 +1532,6 @@ async def cancel_button_select(ack, client, body, logger):
 
 
 
-
-
-
-
-
-
-
-
-@slack_app.command("/post-weinke")
-async def command(ack, body, respond, client, logger):
-    await ack()
-    logger.info(body)
-    # placeholder for now
-    try:
-        # await weinke_create(db_config)
-        await client.files_upload(
-            file='weinkes/current_week_weinke.png',
-            initial_comment="This week's schedule",
-            channels=body['channel_id']
-        )
-    except Exception as e:
-        logger.error(e)
 
 
 async def get_pax(pax):

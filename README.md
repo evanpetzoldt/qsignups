@@ -41,6 +41,8 @@ ENV_VARIABLE2 = 'oinsegln'
 | DATABASE_SCHEMA | The name of your schema on the central PAXMiner db. This is often your region name |
 | DATABASE_USER | This is the name of the db user that has **write permissions** on the Schema above. This may also be your region name |
 | DATABASE_WRITE_PASSWORD | A write-access password associated with the DB user above. This will be provided by Beaker |
+| USE_WEINKES | Set to 'False' unless you will be running Weinkes (currently requires a separate local machine) |
+| SITEQ_LIST | In addition to Slack Admins having admin access, you can also grant this to SiteQs. Format for this variable is SITEQ_LIST='["SITEQ1_ID", "SITEQ2_ID", etc.]'
 
 5. Once this is created (and after you've set up the App Service in Azure), you can upload these variables into your app. If you're using VSCode, install and sign into the Azure App Service extension. On the App Service tree, right click 'Application Settings' and select 'Upload Local Settings...'. When prompted, select your local .env file
 
@@ -55,14 +57,14 @@ ENV_VARIABLE2 = 'oinsegln'
 6. Under App Service Plan **make sure to select the free F1 tier Sku/size**. This is a basic server but should be able to handle our loads.
 7. Hit Review+create to create the app. It may take the new app some time to initialize.
 8. Navigate to your app by clicking on it on the left hand side. Then go to Deployment Center on the left toolbar.
-9. [placeholder for more instructions syncing your github to the app]
+9. Under Settings, select Github as your Source. Sign into Github if prompted, then select your Org, Repo, and Branch. Click Save, and the codebase should automatically deploy.
 10. Based on how I set mine up, it sort of falls asleep after a bit of inactivity. One way to keep this from happening is to use a service that pings the app every so often. I am using [uptimerobot.com](https://uptimerobot.com/) to do this with the following settings: 
 
 ## Slack Instructions
 
 Go to https://api.slack.com/start/overview#creating to read up on how to create a slack app. Click their `Create a Slack app` while signed into your F3 region's Slack.
 
-When you finish setting up and installing the slackblast app in Slack, you will get a bot token also available under the OAuth & Permissions settings. You'll also get a verification token and signing secret on the Basic Information settings. You will plug that information into your own `.env` file (see above). When you finish creating the Azure app, you will need to get the URL and add it (with `/slack/events` added to it) into three locations within the slackblast app settings:
+When you finish setting up and installing the app in Slack, you will get a bot token also available under the OAuth & Permissions settings. You'll also get a verification token and signing secret on the Basic Information settings. You will plug that information into your own `.env` file (see above). When you finish creating the Azure app, you will need to get the URL and add it (with `/slack/events` added to it) into three locations within the Slack app settings:
 
 1. Interactivity and Shortcuts
    - Request URL
@@ -117,7 +119,7 @@ We may be able to set that up on a free Azure VM at some point in the future.
 
 ## Project Status
 
-The app is functional but pretty barebones at the moment. I welcome all beta testers and co-developers! Hit me up if you'd like to help out [@Moneyball (F3 St. Charles)] on the Nation space, or feel free to submit pull requests!
+I consider the app to be functional, but I also have a lot planned! I welcome all beta testers and co-developers! Hit me up if you'd like to help out [@Moneyball (F3 St. Charles)] on the Nation space, or feel free to submit pull requests.
 
 If you find bugs, you can reach out on Slack or (even better) add the issue to my github Issues log.
 
@@ -125,15 +127,14 @@ If you find bugs, you can reach out on Slack or (even better) add the issue to m
 * AOs can be added to the list via the UI
 * Weekly beatdown schedules can be added to the calendar via the UI
 * Users can take Q slots and the calendar db will be updated
-* Users can take themselves off Q slots (Slack admins can also do this for others)
+* Users can take themselves off Q slots and edit their events (time, special qualifier like VQ)
+* Slack admins / listed IDs can also clearn slots and edit event for others
 
 ### Feature Requests / Roadmap
 * More calendar management UI functionality:
   * Add single (non-recurring) events
   * Delete single and / or recurring events
   * Edit an AO (name change, etc.)
-  * Edit an event (time change, special qualifier like VQ, etc.)
-* Ability for users to edit their own events (special qualifiers like birthday Q or VQ)
 * Support for other event types (most notably QSource)
 * Automated posting of a weekly Weinke / schedule (creation code is in `weinke_create.py`)
 * Reminder messages to users about upcoming Qs (a couple days in advance?)

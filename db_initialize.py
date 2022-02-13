@@ -62,3 +62,4 @@ with mysql.connector.connect(**db_config) as mydb:
 	mycursor.execute(schedule_aos_create)
 	mycursor.execute(schedule_weinkes_create)
 	mycursor.execute("COMMIT;")
+
