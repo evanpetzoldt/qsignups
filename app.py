@@ -259,6 +259,7 @@ async def refresh_home_tab(client, user_id, logger, top_message):
 
     # Attempt to publish view
     try:
+        logger.debug(blocks)
         await client.views_publish(
             user_id=user_id,
             token=config('SLACK_BOT_TOKEN'),
