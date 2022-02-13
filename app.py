@@ -576,7 +576,7 @@ async def handle_manage_schedule_option_button(ack, body, client, logger):
                 },
                 "label": {
                     "type": "plain_text",
-                    "text": "Event Date",
+                    "text": "Start Date",
                     "emoji": True
                 }
             },
