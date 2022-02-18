@@ -709,7 +709,7 @@ async def handle_edit_event_ao_select(ack, body, client, logger):
     ON m.ao_channel_id = a.ao_channel_id
     WHERE a.ao_channel_id = "{ao_channel_id}"
         AND m.event_date > DATE("{date.today()}")
-        AND m.event_date <= DATE("{date.today() + timedelta(weeks=10)}");
+        AND m.event_date <= DATE("{date.today() + timedelta(weeks=12)}");
     '''
 
     # Pull upcoming schedule from db
@@ -932,7 +932,7 @@ async def ao_select_slot(ack, client, body, logger):
     FROM schedule_master
     WHERE ao_channel_id = '{ao_channel_id}'
         AND event_date > DATE('{date.today()}')
-        AND event_date <= DATE('{date.today() + timedelta(weeks=6)}');
+        AND event_date <= DATE('{date.today() + timedelta(weeks=10)}');
     """
 
     # Pull upcoming schedule from db
