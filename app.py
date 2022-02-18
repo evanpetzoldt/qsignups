@@ -15,7 +15,7 @@ import os
 import sqlalchemy
 
 # just triggering a re-deployment
-redeploy = True
+redeploy = False
 
 # Inputs
 schedule_create_length_days = 365
