@@ -135,6 +135,7 @@ async def refresh_home_tab(client, user_id, logger, top_message):
     LEFT JOIN schedule_aos a
     ON m.ao_channel_id = a.ao_channel_id
     WHERE m.q_pax_id = "{user_id}"
+        AND m.event_date > DATE("{date.today()}")
     ORDER BY m.event_date, m.event_time
     LIMIT 5; 
     """
@@ -1239,7 +1240,8 @@ async def handle_edit_single_event_button(ack, client, body, logger):
         'The Forge',
         'VQ',
         'F3versary',
-        'Birthday Q'
+        'Birthday Q',
+        'AO Launch'
     ]
     special_options = []
     for option in special_list:
